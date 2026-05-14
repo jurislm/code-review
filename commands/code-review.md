@@ -281,8 +281,15 @@ Artifacts:
 
 Comprehensive Bitbucket Cloud PR review via REST API v2.0.
 
-**Prerequisites**: Set `BB_USERNAME` and `BB_APP_PASSWORD` environment variables.
-Verify with: `echo $BB_USERNAME`
+**Prerequisites**:
+- `BB_USERNAME` — Bitbucket 帳號名稱
+- `BB_APP_PASSWORD` — Bitbucket App Password（**非普通密碼**）
+
+App Password 需要以下權限：
+- Repositories: Read
+- Pull requests: Read + Write（comment / approve / request-changes 必須）
+
+建立路徑：Bitbucket → Settings → Personal settings → App passwords
 
 ### Phase 1 — FETCH
 
@@ -293,17 +300,27 @@ Extract workspace, repo slug, and PR ID from input:
 | Number (e.g. `42`) | Parse workspace/slug from `git remote get-url origin` |
 | URL (`bitbucket.org/{ws}/{slug}/pull-requests/42`) | Extract ws, slug, ID directly |
 
-Parse remote URL (supports both HTTPS and SSH formats):
+Parse remote URL（同時支援 HTTPS 和 SSH 格式）：
 ```bash
 REMOTE=$(git remote get-url origin)
+
 # HTTPS: https://bitbucket.org/workspace/repo.git
 # SSH:   git@bitbucket.org:workspace/repo.git
+
+# 統一提取 workspace/repo_slug
+PATH_PART=$(echo "$REMOTE" \
+  | sed 's|https://bitbucket.org/||' \
+  | sed 's|git@bitbucket.org:||' \
+  | sed 's|\.git$||')
+
+WORKSPACE=$(echo "$PATH_PART" | cut -d/ -f1)
+REPO_SLUG=$(echo "$PATH_PART" | cut -d/ -f2)
 ```
 
 Fetch PR metadata:
 ```bash
 curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
-  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}" \
+  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID" \
   | jq '{
       title,
       description,
@@ -317,10 +334,13 @@ curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
 Fetch diff:
 ```bash
 curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
-  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/diff"
+  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/diff"
 ```
 
-If credentials fail (HTTP 401), stop: "Set BB_USERNAME and BB_APP_PASSWORD environment variables."
+If credentials fail (HTTP 401):
+- 確認使用的是 App Password（非 Bitbucket 帳號密碼）
+- 確認 App Password 有 Repositories: Read 和 Pull requests: Read+Write 權限
+- 測試：`curl -u "$BB_USERNAME:$BB_APP_PASSWORD" "https://api.bitbucket.org/2.0/user"`
 
 ### Phase 2 — CONTEXT
 
@@ -366,15 +386,15 @@ Post review result to Bitbucket:
 curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   -H "Content-Type: application/json" \
   -d "{\"content\": {\"raw\": \"$REVIEW_SUMMARY\"}}" \
-  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/comments"
+  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
 
-# If APPROVE
+# If APPROVE（回傳 200 + JSON: {approved: true, user, role, participated_on}）
 curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
-  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/approve"
+  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/approve"
 
-# If REQUEST CHANGES or BLOCK
-curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
-  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/request-changes"
+# If REQUEST CHANGES or BLOCK（回傳 204 No Content，無 JSON body）
+curl -s -o /dev/null -w "%{http_code}" -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/request-changes"
 ```
 
 For inline comments on specific lines:
@@ -383,13 +403,13 @@ For inline comments on specific lines:
 curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   -H "Content-Type: application/json" \
   -d "{\"content\":{\"raw\":\"$COMMENT\"},\"inline\":{\"path\":\"$FILEPATH\",\"to\":$LINE_NUMBER}}" \
-  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/comments"
+  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
 
 # 刪除行（舊版本的行號）→ 用 "from"
 curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   -H "Content-Type: application/json" \
   -d "{\"content\":{\"raw\":\"$COMMENT\"},\"inline\":{\"path\":\"$FILEPATH\",\"from\":$LINE_NUMBER}}" \
-  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/comments"
+  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
 ```
 
 ### Phase 8 — OUTPUT
