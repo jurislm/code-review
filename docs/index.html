@@ -3,14 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Code Review Plugin for Claude Code</title>
-  <meta name="description" content="24-agent code review ecosystem for Claude Code — language-specific reviewers, 6-agent parallel PR review, and security scanning" />
+  <title>Code Review Plugin — Technical Documentation</title>
+  <meta name="description" content="24-agent code review ecosystem for Claude Code — complete technical reference for commands, agents, and skills." />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
       --bg: #0d1117;
       --surface: #161b22;
+      --surface2: #1c2128;
       --border: #30363d;
       --text: #e6edf3;
       --muted: #8b949e;
@@ -19,317 +20,781 @@
       --green: #3fb950;
       --yellow: #d29922;
       --purple: #bc8cff;
+      --red: #f85149;
+      --cyan: #39d3f0;
+      --sidebar-w: 260px;
+      --nav-h: 48px;
     }
+
+    html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 1.5rem); }
 
     body {
       background: var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      line-height: 1.6;
+      font-size: 15px;
+      line-height: 1.7;
     }
 
     a { color: var(--blue); text-decoration: none; }
     a:hover { text-decoration: underline; }
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: .85em;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: .3rem;
+      padding: .1em .4em;
+    }
 
-    /* ── Nav ── */
-    nav {
-      position: sticky;
-      top: 0;
-      background: rgba(13,17,23,.92);
+    /* ── Top nav ── */
+    .topnav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: var(--nav-h);
+      background: rgba(13,17,23,.95);
       backdrop-filter: blur(8px);
       border-bottom: 1px solid var(--border);
-      padding: .75rem 2rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      z-index: 100;
+      padding: 0 1.5rem;
+      z-index: 200;
     }
-    .nav-brand { font-weight: 700; font-size: 1rem; color: var(--text); display: flex; align-items: center; gap: .5rem; }
-    .nav-links { display: flex; gap: 1.5rem; font-size: .9rem; color: var(--muted); }
-    .nav-links a { color: var(--muted); }
-    .nav-links a:hover { color: var(--text); }
-
-    /* ── Hero ── */
-    .hero {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 5rem 2rem 4rem;
-      text-align: center;
-    }
-    .hero-badge {
-      display: inline-block;
-      background: rgba(247,129,102,.12);
-      color: var(--accent);
-      border: 1px solid rgba(247,129,102,.3);
-      border-radius: 2rem;
-      padding: .25rem .9rem;
-      font-size: .8rem;
-      font-weight: 600;
-      letter-spacing: .04em;
-      margin-bottom: 1.5rem;
-    }
-    h1 {
-      font-size: clamp(2rem, 5vw, 3rem);
-      font-weight: 800;
-      letter-spacing: -.02em;
-      line-height: 1.15;
-      margin-bottom: 1.2rem;
-    }
-    h1 span { color: var(--accent); }
-    .hero-desc {
-      font-size: 1.15rem;
-      color: var(--muted);
-      max-width: 560px;
-      margin: 0 auto 2.5rem;
-    }
-    .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
-    .btn {
-      padding: .6rem 1.4rem;
-      border-radius: .5rem;
+    .topnav-brand {
+      font-weight: 700;
       font-size: .95rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: opacity .15s;
-    }
-    .btn:hover { opacity: .85; text-decoration: none; }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
-
-    /* ── Stats ── */
-    .stats {
       display: flex;
-      justify-content: center;
-      gap: 3rem;
-      padding: 2.5rem 2rem;
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      flex-wrap: wrap;
+      align-items: center;
+      gap: .5rem;
+      color: var(--text);
     }
-    .stat { text-align: center; }
-    .stat-num { font-size: 2rem; font-weight: 800; color: var(--text); }
-    .stat-label { font-size: .85rem; color: var(--muted); margin-top: .2rem; }
+    .topnav-brand .version {
+      font-size: .72rem;
+      font-weight: 500;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 2rem;
+      padding: .15rem .55rem;
+      color: var(--muted);
+    }
+    .topnav-links { display: flex; gap: 1.2rem; font-size: .85rem; }
+    .topnav-links a { color: var(--muted); }
+    .topnav-links a:hover { color: var(--text); text-decoration: none; }
+
+    /* ── Layout ── */
+    .layout {
+      display: flex;
+      margin-top: var(--nav-h);
+      min-height: calc(100vh - var(--nav-h));
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      position: sticky;
+      top: var(--nav-h);
+      height: calc(100vh - var(--nav-h));
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      padding: 1.5rem 0;
+    }
+    .sidebar::-webkit-scrollbar { width: 4px; }
+    .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .nav-section { margin-bottom: 1.4rem; }
+    .nav-section-title {
+      font-size: .7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--muted);
+      padding: 0 1.2rem .4rem;
+    }
+    .nav-item {
+      display: block;
+      padding: .3rem 1.2rem;
+      font-size: .85rem;
+      color: var(--muted);
+      border-left: 2px solid transparent;
+      transition: color .12s, border-color .12s;
+    }
+    .nav-item:hover { color: var(--text); text-decoration: none; }
+    .nav-item.active { color: var(--blue); border-left-color: var(--blue); background: rgba(88,166,255,.06); }
+    .nav-sub {
+      padding: .2rem 1.2rem .2rem 2rem;
+      font-size: .8rem;
+      color: var(--muted);
+      display: block;
+      transition: color .12s;
+    }
+    .nav-sub:hover { color: var(--text); text-decoration: none; }
+
+    /* ── Main content ── */
+    .main {
+      flex: 1;
+      min-width: 0;
+      padding: 2.5rem 3rem 4rem;
+      max-width: 860px;
+    }
 
     /* ── Sections ── */
-    section { max-width: 900px; margin: 0 auto; padding: 4rem 2rem; }
-    h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; }
-    h2 .icon { margin-right: .4rem; }
+    .doc-section { margin-bottom: 3.5rem; }
+    h1 { font-size: 2rem; font-weight: 800; letter-spacing: -.02em; margin-bottom: .6rem; }
+    h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      padding-top: 1rem;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: .5rem;
+    }
+    h3 { font-size: 1rem; font-weight: 700; margin: 1.4rem 0 .6rem; color: var(--text); }
+    p { margin-bottom: .8rem; color: #c9d1d9; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: .8rem; color: #c9d1d9; }
+    li { margin-bottom: .25rem; }
 
-    /* ── Features ── */
-    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
-    .feature-card {
+    .lead {
+      font-size: 1.05rem;
+      color: var(--muted);
+      margin-bottom: 1.5rem;
+      line-height: 1.8;
+    }
+
+    /* ── Badges row ── */
+    .badges { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.5rem; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      font-size: .75rem;
+      font-weight: 600;
+      padding: .25rem .7rem;
+      border-radius: 2rem;
+      border: 1px solid;
+    }
+    .badge-gray  { background: rgba(139,148,158,.1); border-color: var(--border); color: var(--muted); }
+    .badge-blue  { background: rgba(88,166,255,.1);  border-color: rgba(88,166,255,.3);  color: var(--blue); }
+    .badge-green { background: rgba(63,185,80,.1);   border-color: rgba(63,185,80,.3);   color: var(--green); }
+    .badge-yellow{ background: rgba(210,153,34,.1);  border-color: rgba(210,153,34,.3);  color: var(--yellow); }
+
+    /* ── Code block ── */
+    .codeblock {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: .75rem;
-      padding: 1.4rem;
+      border-radius: .6rem;
+      overflow: hidden;
+      margin: .8rem 0 1.2rem;
     }
-    .feature-icon { font-size: 1.6rem; margin-bottom: .8rem; }
-    .feature-title { font-weight: 700; margin-bottom: .4rem; font-size: .95rem; }
-    .feature-desc { font-size: .85rem; color: var(--muted); }
-
-    /* ── Quick start ── */
-    .quickstart { background: var(--surface); border: 1px solid var(--border); border-radius: .75rem; overflow: hidden; }
-    .qs-header { padding: .7rem 1.2rem; border-bottom: 1px solid var(--border); font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: .5rem; }
-    .qs-dot { width: 12px; height: 12px; border-radius: 50%; }
-    pre {
-      padding: 1.4rem;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-      font-size: .87rem;
+    .codeblock-header {
+      padding: .5rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: .75rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: .4rem;
+    }
+    .codeblock pre {
+      padding: 1.1rem 1.2rem;
+      font-size: .83rem;
       overflow-x: auto;
       line-height: 1.8;
     }
+    .codeblock pre code { background: none; border: none; padding: 0; font-size: inherit; }
     .c-comment { color: var(--muted); }
     .c-cmd { color: var(--green); }
     .c-arg { color: var(--blue); }
     .c-flag { color: var(--yellow); }
+    .c-str { color: #a5d6ff; }
 
-    /* ── Agents grid ── */
-    .agents-section { background: var(--surface); border-radius: .75rem; border: 1px solid var(--border); overflow: hidden; }
-    .agents-group { padding: 1.2rem 1.4rem; border-bottom: 1px solid var(--border); }
-    .agents-group:last-child { border-bottom: none; }
-    .agents-group-title { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .9rem; }
-    .agent-tags { display: flex; flex-wrap: wrap; gap: .5rem; }
-    .tag {
-      display: inline-flex;
-      align-items: center;
-      gap: .3rem;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: .4rem;
-      padding: .25rem .7rem;
-      font-size: .8rem;
-      font-family: "SFMono-Regular", Consolas, monospace;
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; margin: .8rem 0 1.4rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    th {
+      text-align: left;
+      padding: .55rem .9rem;
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
     }
-    .tag-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .dot-green  { background: #3fb950; }
-    .dot-red    { background: #f85149; }
-    .dot-cyan   { background: #39d3f0; }
-    .dot-blue   { background: #58a6ff; }
-    .dot-yellow { background: #d29922; }
-    .dot-purple { background: #bc8cff; }
+    td { padding: .55rem .9rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface); }
+
+    /* ── Agent card ── */
+    .agent-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: .6rem;
+      padding: 1rem 1.2rem;
+      margin-bottom: .75rem;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: .6rem 1rem;
+      align-items: start;
+    }
+    .agent-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-top: .55rem;
+      flex-shrink: 0;
+    }
+    .agent-name { font-weight: 700; font-size: .9rem; font-family: "SFMono-Regular", Consolas, monospace; }
+    .agent-desc { font-size: .82rem; color: var(--muted); margin-top: .25rem; line-height: 1.5; }
+    .agent-meta { display: flex; gap: .5rem; margin-top: .4rem; flex-wrap: wrap; }
+    .agent-pill {
+      font-size: .7rem;
+      padding: .1rem .5rem;
+      border-radius: 2rem;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      background: var(--surface2);
+    }
+
+    /* ── Callout ── */
+    .callout {
+      border-left: 3px solid;
+      border-radius: 0 .4rem .4rem 0;
+      padding: .8rem 1rem;
+      margin: .8rem 0 1.2rem;
+      font-size: .875rem;
+    }
+    .callout-note  { border-color: var(--blue);   background: rgba(88,166,255,.07);  }
+    .callout-warn  { border-color: var(--yellow);  background: rgba(210,153,34,.07);  }
+    .callout-tip   { border-color: var(--green);   background: rgba(63,185,80,.07);   }
+    .callout strong { display: block; margin-bottom: .25rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    .callout-note strong  { color: var(--blue); }
+    .callout-warn strong  { color: var(--yellow); }
+    .callout-tip strong   { color: var(--green); }
+
+    /* ── Severity pills ── */
+    .sev {
+      display: inline-block;
+      font-size: .7rem;
+      font-weight: 700;
+      padding: .1rem .5rem;
+      border-radius: .25rem;
+      letter-spacing: .03em;
+    }
+    .sev-critical { background: rgba(248,81,73,.15);  color: var(--red);    border: 1px solid rgba(248,81,73,.3); }
+    .sev-high     { background: rgba(210,153,34,.15); color: var(--yellow); border: 1px solid rgba(210,153,34,.3); }
+    .sev-medium   { background: rgba(88,166,255,.12); color: var(--blue);   border: 1px solid rgba(88,166,255,.3); }
+    .sev-low      { background: rgba(139,148,158,.1); color: var(--muted);  border: 1px solid var(--border); }
+
+    /* ── Decision table ── */
+    .decision td:first-child { font-weight: 700; }
+    .block    { color: var(--red); }
+    .changes  { color: var(--yellow); }
+    .approve-c{ color: var(--blue); }
+    .approve  { color: var(--green); }
 
     /* ── Footer ── */
     footer {
       border-top: 1px solid var(--border);
-      padding: 2rem;
-      text-align: center;
-      font-size: .85rem;
+      padding: 1.5rem 3rem;
+      font-size: .82rem;
       color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: .5rem;
     }
     footer a { color: var(--muted); }
     footer a:hover { color: var(--text); }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { padding: 1.5rem 1.2rem 3rem; }
+      footer { padding: 1.2rem; }
+    }
   </style>
 </head>
 <body>
 
-<!-- Nav -->
-<nav>
-  <span class="nav-brand">⬡ code-review</span>
-  <div class="nav-links">
-    <a href="#quickstart">Quick Start</a>
-    <a href="#agents">Agents</a>
+<!-- Top nav -->
+<nav class="topnav">
+  <div class="topnav-brand">
+    ⬡ code-review
+    <span class="version">v1.0.0</span>
+  </div>
+  <div class="topnav-links">
     <a href="https://github.com/jurislm/code-review">GitHub</a>
+    <a href="https://github.com/jurislm/code-review/releases">Releases</a>
+    <a href="https://github.com/jurislm/code-review/issues">Issues</a>
   </div>
 </nav>
 
-<!-- Hero -->
-<div class="hero">
-  <div class="hero-badge">Claude Code Plugin</div>
-  <h1>Code Review,<br /><span>Done Right.</span></h1>
-  <p class="hero-desc">
-    24 個語言 / 框架專項 reviewer agent、六 agent 並行 PR review、OWASP 安全掃描——全部以 Claude Code plugin 形式一鍵安裝。
-  </p>
-  <div class="hero-actions">
-    <a class="btn btn-primary" href="#quickstart">30 秒安裝</a>
-    <a class="btn btn-secondary" href="https://github.com/jurislm/code-review">View on GitHub</a>
-  </div>
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="nav-section">
+      <div class="nav-section-title">Getting Started</div>
+      <a class="nav-item" href="#overview">Overview</a>
+      <a class="nav-item" href="#installation">Installation</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Commands</div>
+      <a class="nav-item" href="#commands">/code-review</a>
+      <a class="nav-sub" href="#cmd-local">Local mode</a>
+      <a class="nav-sub" href="#cmd-pr">PR mode</a>
+      <a class="nav-sub" href="#cmd-bitbucket">Bitbucket</a>
+      <a class="nav-item" href="#cmd-review-pr">/review-pr</a>
+      <a class="nav-item" href="#cmd-lang">Language commands</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Agents</div>
+      <a class="nav-item" href="#agents-general">通用主審</a>
+      <a class="nav-item" href="#agents-pr">PR 協作</a>
+      <a class="nav-item" href="#agents-lang">語言 / 框架</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Skills</div>
+      <a class="nav-item" href="#skills">Auto-trigger Skills</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Reference</div>
+      <a class="nav-item" href="#severity">Severity Levels</a>
+      <a class="nav-item" href="#decision">Decision Logic</a>
+      <a class="nav-item" href="#principles">Design Principles</a>
+      <a class="nav-item" href="#contributing">Contributing</a>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Overview -->
+    <section class="doc-section" id="overview">
+      <h1>Code Review Plugin</h1>
+      <div class="badges">
+        <span class="badge badge-gray">MIT License</span>
+        <span class="badge badge-blue">24 Agents</span>
+        <span class="badge badge-green">9 Commands</span>
+        <span class="badge badge-yellow">3 Skills</span>
+        <span class="badge badge-gray">Claude Code Plugin</span>
+      </div>
+      <p class="lead">
+        完整 code review 生態系統，以 Claude Code plugin 形式發布。提供 24 個語言 / 框架專項 reviewer agent、9 個 slash command、以及 3 個自動觸發的安全 review skill。
+      </p>
+      <div class="callout callout-tip">
+        <strong>高信心原則</strong>
+        所有 agent 僅報告 confidence ≥ 80% 的問題。零 finding 是合法結果，代表 clean code，不會強行挑毛病。
+      </div>
+
+      <h3>核心特性</h3>
+      <ul>
+        <li><strong>24 個 Reviewer Agent</strong> — 涵蓋 TypeScript、Python、Go、Rust、Java、Kotlin、Swift、C++、C#、F#、Django、FastAPI、Flutter、Database、Healthcare（PHI/HIPAA）、ML pipeline</li>
+        <li><strong>六 Agent 並行 PR Review</strong> — <code>/review-pr</code> 同時啟動 6 個專項 agent，confidence &lt; 80% 自動過濾</li>
+        <li><strong>多平台 PR Review</strong> — 自動偵測 GitHub（需 <code>gh</code> CLI）與 Bitbucket Cloud（需環境變數）</li>
+        <li><strong>Auto-trigger Skills</strong> — 根據任務上下文自動啟動安全掃描，無需手動呼叫</li>
+      </ul>
+    </section>
+
+    <!-- Installation -->
+    <section class="doc-section" id="installation">
+      <h2>Installation</h2>
+
+      <h3>Plugin 安裝（推薦）</h3>
+      <p>在 Claude Code 中執行 <code>/plugin</code>，搜尋 <code>jurislm/code-review</code>，點擊安裝後執行 <code>/reload-plugins</code> 套用。安裝後無需額外設定即可使用所有功能。</p>
+
+      <h3>手動安裝</h3>
+      <div class="codeblock">
+        <div class="codeblock-header">bash</div>
+        <pre><code><span class="c-comment"># Clone 專案</span>
+git clone https://github.com/jurislm/code-review.git
+
+<span class="c-comment"># 複製各元件到全域</span>
+cp commands/*.md ~/.claude/commands/
+cp agents/*.md ~/.claude/agents/
+cp -r skills/* ~/.claude/skills/</code></pre>
+      </div>
+
+      <h3>Bitbucket 環境變數</h3>
+      <p>使用 Bitbucket Cloud PR review 前，需在 <code>~/.zshenv</code>（或 <code>~/.bashrc</code>）加入：</p>
+      <div class="codeblock">
+        <div class="codeblock-header">~/.zshenv</div>
+        <pre><code>export BB_USERNAME=<span class="c-str">"your-bitbucket-username"</span>
+export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pre>
+      </div>
+      <div class="callout callout-note">
+        <strong>Bitbucket App Password</strong>
+        前往 Bitbucket → Settings → Personal settings → App passwords，勾選 Pull requests（Read + Write）權限後建立。
+      </div>
+    </section>
+
+    <!-- /code-review -->
+    <section class="doc-section" id="commands">
+      <h2>/code-review</h2>
+      <p>本地 uncommitted 變更 review 或 GitHub / Bitbucket PR review，自動偵測模式。</p>
+
+      <div class="codeblock">
+        <div class="codeblock-header">syntax</div>
+        <pre><code>/code-review [pr-number | pr-url | blank]</code></pre>
+      </div>
+
+      <h3 id="cmd-local">Local Review Mode</h3>
+      <p>不傳參數時進入本地模式，對目前 uncommitted 變更進行審查。</p>
+      <div class="codeblock">
+        <div class="codeblock-header">example</div>
+        <pre><code><span class="c-cmd">/code-review</span></code></pre>
+      </div>
+      <p>執行流程：</p>
+      <ol>
+        <li><strong>GATHER</strong> — <code>git diff --name-only HEAD</code> 收集變更檔案；無變更則停止</li>
+        <li><strong>REVIEW</strong> — 讀每個變更檔案全文，對照安全與品質清單</li>
+        <li><strong>REPORT</strong> — 依 CRITICAL → HIGH → MEDIUM → LOW 輸出 finding</li>
+      </ol>
+
+      <h3 id="cmd-pr">GitHub PR Review Mode</h3>
+      <p>傳入 PR 號碼或 GitHub URL，需本機安裝 <code>gh</code> CLI 並已登入。</p>
+      <div class="codeblock">
+        <div class="codeblock-header">example</div>
+        <pre><code><span class="c-cmd">/code-review</span> <span class="c-arg">123</span>
+<span class="c-cmd">/code-review</span> <span class="c-arg">https://github.com/owner/repo/pull/123</span></code></pre>
+      </div>
+      <p>執行流程（8 phases）：Fetch → Context → Review → Validate → Decide → Report → Publish → Output</p>
+
+      <h3 id="cmd-bitbucket">Bitbucket Cloud PR Review Mode</h3>
+      <p>URL 含 <code>bitbucket.org</code> 或 remote origin 指向 Bitbucket 時自動切換，使用 REST API（需 <code>BB_USERNAME</code>、<code>BB_APP_PASSWORD</code>）。</p>
+      <div class="codeblock">
+        <div class="codeblock-header">example</div>
+        <pre><code><span class="c-cmd">/code-review</span> <span class="c-arg">123</span>
+<span class="c-cmd">/code-review</span> <span class="c-arg">https://bitbucket.org/workspace/repo/pull-requests/123</span></code></pre>
+      </div>
+    </section>
+
+    <!-- /review-pr -->
+    <section class="doc-section" id="cmd-review-pr">
+      <h2>/review-pr</h2>
+      <p>同時啟動 6 個專項 agent 對同一 PR 進行並行審查，再彙整去重並排序 finding。confidence &lt; 80% 自動過濾。</p>
+
+      <div class="codeblock">
+        <div class="codeblock-header">syntax</div>
+        <pre><code>/review-pr [pr-number | pr-url] [--focus &lt;area&gt;]</code></pre>
+      </div>
+
+      <div class="codeblock">
+        <div class="codeblock-header">examples</div>
+        <pre><code><span class="c-cmd">/review-pr</span> <span class="c-arg">123</span>
+<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus security</span>
+<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus performance</span>
+<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus types</span>
+<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus tests</span></code></pre>
+      </div>
+
+      <h3>並行 Agents</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Agent</th><th>負責範圍</th></tr></thead>
+          <tbody>
+            <tr><td><code>code-reviewer</code></td><td>整體品質、安全性、可維護性，含 false positive 過濾</td></tr>
+            <tr><td><code>comment-analyzer</code></td><td>行內 comment 準確性、完整性、rot 風險</td></tr>
+            <tr><td><code>pr-test-analyzer</code></td><td>測試覆蓋率、行為涵蓋、真實 bug 防護</td></tr>
+            <tr><td><code>silent-failure-hunter</code></td><td>swallowed error、ignored promise、錯誤傳遞缺失</td></tr>
+            <tr><td><code>type-design-analyzer</code></td><td>型別封裝、invariant 表達、強制性</td></tr>
+            <tr><td><code>code-simplifier</code></td><td>過度複雜實作、重複抽象、可讀性</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Language commands -->
+    <section class="doc-section" id="cmd-lang">
+      <h2>Language Commands</h2>
+      <p>語言專項 command，不傳參數則預設審查 staged changes；可傳入目錄或檔案路徑作為參數。</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Command</th><th>調用的 Agent</th><th>適用</th></tr></thead>
+          <tbody>
+            <tr><td><code>/python-review</code></td><td>python-reviewer</td><td>PEP 8、type hints、安全性、Pythonic idioms</td></tr>
+            <tr><td><code>/go-review</code></td><td>go-reviewer</td><td>idiomatic Go、並發安全、錯誤處理、效能</td></tr>
+            <tr><td><code>/rust-review</code></td><td>rust-reviewer</td><td>ownership、lifetimes、unsafe usage、慣用模式</td></tr>
+            <tr><td><code>/cpp-review</code></td><td>cpp-reviewer</td><td>記憶體安全、modern C++ idioms、並發、效能</td></tr>
+            <tr><td><code>/kotlin-review</code></td><td>kotlin-reviewer</td><td>idiomatic Kotlin、coroutine 安全、Compose</td></tr>
+            <tr><td><code>/fastapi-review</code></td><td>fastapi-reviewer</td><td>async 正確性、dependency injection、Pydantic</td></tr>
+            <tr><td><code>/flutter-review</code></td><td>flutter-reviewer</td><td>widget 最佳實踐、state management、效能</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Agents — General -->
+    <section class="doc-section" id="agents-general">
+      <h2>Agents — 通用主審</h2>
+
+      <div class="agent-card">
+        <div class="agent-dot" style="background:var(--green)"></div>
+        <div>
+          <div class="agent-name">code-reviewer</div>
+          <div class="agent-desc">主審 agent，負責整體程式碼品質、安全性、可維護性。包含嚴格的 false positive 過濾機制，針對 React / Node.js 有專項規則。修改任何程式碼後應立即使用。</div>
+          <div class="agent-meta">
+            <span class="agent-pill">Model: Sonnet</span>
+            <span class="agent-pill">Tools: Read · Grep · Glob · Bash</span>
+          </div>
+          <div class="agent-meta">
+            <span class="agent-pill" style="color:var(--muted)">觸發：所有程式碼變更後</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="agent-card">
+        <div class="agent-dot" style="background:var(--red)"></div>
+        <div>
+          <div class="agent-name">security-reviewer</div>
+          <div class="agent-desc">安全漏洞偵測與修補專家。掃描 OWASP Top 10、hardcoded secrets、SSRF、injection、unsafe crypto。遇到 CRITICAL finding 發出緊急警報，可執行 <code>npm audit</code> 與 ESLint security plugin。</div>
+          <div class="agent-meta">
+            <span class="agent-pill">Model: Sonnet</span>
+            <span class="agent-pill">Tools: Read · Write · Edit · Bash · Grep · Glob</span>
+          </div>
+          <div class="agent-meta">
+            <span class="agent-pill" style="color:var(--muted)">觸發：auth、API endpoint、user input、secrets 相關程式碼</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Agents — PR -->
+    <section class="doc-section" id="agents-pr">
+      <h2>Agents — PR 協作</h2>
+      <p>以下 agent 由 <code>/review-pr</code> 並行調用，也可在對話中單獨使用。</p>
+
+      <div class="agent-card">
+        <div class="agent-dot" style="background:var(--cyan)"></div>
+        <div>
+          <div class="agent-name">comment-analyzer</div>
+          <div class="agent-desc">分析程式碼行內 comment 的準確性、完整性、可維護性，以及 comment rot 風險（comment 與實際行為脫節）。</div>
+          <div class="agent-meta"><span class="agent-pill">Model: Sonnet</span><span class="agent-pill">Tools: Read · Grep · Glob</span></div>
+        </div>
+      </div>
+
+      <div class="agent-card">
+        <div class="agent-dot" style="background:var(--cyan)"></div>
+        <div>
+          <div class="agent-name">pr-test-analyzer</div>
+          <div class="agent-desc">審查 PR 測試覆蓋品質與完整性，重點在行為涵蓋（behavioral coverage）與真實 bug 防護，而非表層語法檢查。</div>
+          <div class="agent-meta"><span class="agent-pill">Model: Sonnet</span><span class="agent-pill">Tools: Read · Grep · Glob · Bash</span></div>
+        </div>
+      </div>
+
+      <div class="agent-card">
+        <div class="agent-dot" style="background:var(--cyan)"></div>
+        <div>
+          <div class="agent-name">silent-failure-hunter</div>
+          <div class="agent-desc">專門偵測 swallowed error、ignored promise、bad fallback、缺失的錯誤傳遞——這類問題不會讓程式崩潰，但會讓 bug 靜默擴散。</div>
+          <div class="agent-meta"><span class="agent-pill">Model: Sonnet</span><span class="agent-pill">Tools: Read · Grep · Glob · Bash</span></div>
+        </div>
+      </div>
+
+      <div class="agent-card">
+        <div class="agent-dot" style="background:var(--cyan)"></div>
+        <div>
+          <div class="agent-name">type-design-analyzer</div>
+          <div class="agent-desc">分析型別設計的封裝性、invariant 表達、有效性與強制性。找出過度鬆散的 type（如裸 <code>string</code> 代表有語義的值）或未充分利用型別系統的模式。</div>
+          <div class="agent-meta"><span class="agent-pill">Model: Sonnet</span><span class="agent-pill">Tools: Read · Grep · Glob</span></div>
+        </div>
+      </div>
+
+      <div class="agent-card">
+        <div class="agent-dot" style="background:var(--cyan)"></div>
+        <div>
+          <div class="agent-name">code-simplifier</div>
+          <div class="agent-desc">找出過度複雜的實作，提出簡化方案。在保留行為的前提下，改善清晰度、一致性與可維護性，不引入不必要的抽象。</div>
+          <div class="agent-meta"><span class="agent-pill">Model: Sonnet</span><span class="agent-pill">Tools: Read · Write · Edit · Bash · Grep · Glob</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Agents — Language -->
+    <section class="doc-section" id="agents-lang">
+      <h2>Agents — 語言 / 框架專項</h2>
+
+      <h3>通用語言（Sonnet · 藍色）</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Agent</th><th>專項範圍</th></tr></thead>
+          <tbody>
+            <tr><td><code>typescript-reviewer</code></td><td>type safety、async correctness、Node/web 安全性、idiomatic patterns。所有 TypeScript / JavaScript 變更必用。</td></tr>
+            <tr><td><code>python-reviewer</code></td><td>PEP 8 合規、Pythonic idioms、type hints、安全性、效能。所有 Python 變更必用。</td></tr>
+            <tr><td><code>go-reviewer</code></td><td>idiomatic Go、concurrency patterns、error handling、效能。所有 Go 變更必用。</td></tr>
+            <tr><td><code>rust-reviewer</code></td><td>ownership、lifetimes、error handling、unsafe usage、idiomatic patterns。所有 Rust 變更必用。</td></tr>
+            <tr><td><code>cpp-reviewer</code></td><td>記憶體安全、modern C++ idioms（C++17/20）、concurrency、效能。所有 C++ 變更必用。</td></tr>
+            <tr><td><code>csharp-reviewer</code></td><td>.NET conventions、async patterns、安全性、nullable reference types、效能。所有 C# 變更必用。</td></tr>
+            <tr><td><code>java-reviewer</code></td><td>Spring Boot / Quarkus（自動偵測框架）、layered architecture、JPA/Panache、MongoDB、安全性、concurrency。</td></tr>
+            <tr><td><code>kotlin-reviewer</code></td><td>idiomatic patterns、coroutine 安全、Compose 最佳實踐、clean architecture、Android / KMP 常見陷阱。</td></tr>
+            <tr><td><code>swift-reviewer</code></td><td>protocol-oriented design、value semantics、ARC 記憶體管理、Swift Concurrency、idiomatic patterns。</td></tr>
+            <tr><td><code>fsharp-reviewer</code></td><td>functional idioms、type safety、pattern matching、computation expressions、效能。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>框架專項（Sonnet · 黃色）</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Agent</th><th>專項範圍</th></tr></thead>
+          <tbody>
+            <tr><td><code>django-reviewer</code></td><td>ORM correctness、DRF patterns、migration 安全、security misconfigurations、production-grade Django 實踐。</td></tr>
+            <tr><td><code>fastapi-reviewer</code></td><td>async 正確性、dependency injection、Pydantic schemas、安全性、OpenAPI 品質、測試、production readiness。</td></tr>
+            <tr><td><code>flutter-reviewer</code></td><td>widget 最佳實踐、state management patterns（BLoC / Riverpod / Provider / GetX / MobX / Signals）、Dart idioms、效能、accessibility。Library-agnostic。</td></tr>
+            <tr><td><code>database-reviewer</code></td><td>PostgreSQL query 優化、schema design、安全性、效能。涵蓋 Supabase 最佳實踐。寫 SQL / 建 migration / 設計 schema 時主動使用。</td></tr>
+            <tr><td><code>network-config-reviewer</code></td><td>Router / switch 設定的安全性、正確性、stale references、risky change-window commands、操作護欄缺失。</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>特殊領域（Opus · 紫色）</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Agent</th><th>專項範圍</th></tr></thead>
+          <tbody>
+            <tr><td><code>healthcare-reviewer</code></td><td>臨床安全、CDSS 準確性、PHI 合規（HIPAA）、醫療資料完整性。適用 EMR/EHR、臨床決策支援、健康資訊系統。使用 Opus 模型。</td></tr>
+            <tr><td><code>mle-reviewer</code></td><td>data contracts、feature pipelines、training reproducibility、offline/online evaluation、model serving、monitoring、rollback。適用 ML / MLOps / 模型訓練 / 推論 / feature store。使用 Opus 模型。</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Skills -->
+    <section class="doc-section" id="skills">
+      <h2>Auto-trigger Skills</h2>
+      <p>Skills 根據任務上下文自動啟動，無需手動呼叫。以下說明各 skill 的觸發條件與功能。</p>
+
+      <h3>security-review</h3>
+      <p><strong>觸發條件：</strong>實作 authentication / authorization、處理 user input 或 file upload、建立 API endpoint、存取 secrets 或 credentials、實作付款功能、儲存或傳輸敏感資料、整合第三方 API。</p>
+      <p>提供完整的安全清單，涵蓋 secrets management、input validation、authentication、cryptography、dependency security 等，每項均附反例（FAIL）與正確做法（PASS）的程式碼範例。</p>
+
+      <h3>security-scan</h3>
+      <p><strong>觸發條件：</strong>掃描 <code>.claude/</code> 設定目錄的安全漏洞，包含 settings.json、hooks、MCP 設定、permission 設定等。</p>
+
+      <h3>flutter-dart-code-review</h3>
+      <p><strong>觸發條件：</strong>Review Flutter / Dart 程式碼時啟動。</p>
+      <p>Library-agnostic 的 Flutter / Dart 完整 review 清單，涵蓋 widget 最佳實踐、各種 state management 模式（BLoC、Riverpod、Provider、GetX、MobX、Signals）、Dart idioms、效能、accessibility、安全性、clean architecture。</p>
+    </section>
+
+    <!-- Severity -->
+    <section class="doc-section" id="severity">
+      <h2>Severity Levels</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Level</th><th>定義</th><th>處理方式</th></tr></thead>
+          <tbody>
+            <tr><td><span class="sev sev-critical">CRITICAL</span></td><td>安全漏洞、資料遺失風險</td><td>BLOCK — merge 前必須修復</td></tr>
+            <tr><td><span class="sev sev-high">HIGH</span></td><td>Bug、顯著品質問題</td><td>WARN — 建議 merge 前修復</td></tr>
+            <tr><td><span class="sev sev-medium">MEDIUM</span></td><td>可維護性問題</td><td>INFO — 考慮修復</td></tr>
+            <tr><td><span class="sev sev-low">LOW</span></td><td>風格或輕微建議</td><td>NOTE — 選擇性修復</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>HIGH / CRITICAL finding 三要素</h3>
+      <p>每個 HIGH 或 CRITICAL finding 必須同時提供：</p>
+      <ol>
+        <li><strong>精確行號</strong> — 指出問題所在的具體位置</li>
+        <li><strong>具體失敗場景</strong> — 描述這個問題在什麼情境下會造成實際問題</li>
+        <li><strong>現有 guard 為何不夠</strong> — 說明目前的防護機制有何缺失</li>
+      </ol>
+    </section>
+
+    <!-- Decision -->
+    <section class="doc-section" id="decision">
+      <h2>Decision Logic</h2>
+      <p>PR review 完成後，依據 finding 嚴重程度自動產生決策：</p>
+      <div class="table-wrap">
+        <table class="decision">
+          <thead><tr><th>決策結果</th><th>觸發條件</th></tr></thead>
+          <tbody>
+            <tr><td class="block">BLOCK</td><td>任一 <span class="sev sev-critical">CRITICAL</span> finding</td></tr>
+            <tr><td class="changes">REQUEST CHANGES</td><td>任一 <span class="sev sev-high">HIGH</span> finding 或 validation 失敗</td></tr>
+            <tr><td class="approve-c">APPROVE with comments</td><td>僅 <span class="sev sev-medium">MEDIUM</span> / <span class="sev sev-low">LOW</span> finding</td></tr>
+            <tr><td class="approve">APPROVE</td><td>零 finding</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Principles -->
+    <section class="doc-section" id="principles">
+      <h2>Design Principles</h2>
+      <ol>
+        <li><strong>高信心原則</strong> — 只報告 confidence &gt; 80% 的問題。不確定的 finding 寧可略過，不製造雜訊。</li>
+        <li><strong>讀全文</strong> — PR review 讀每個變更檔案的全文，而非只看 diff 行。context 是判斷問題的關鍵。</li>
+        <li><strong>零 finding 合法</strong> — clean code 應該得到 APPROVE，不強行挑毛病。</li>
+        <li><strong>HIGH / CRITICAL 三要素</strong> — 精確行號 + 具體失敗場景 + 現有 guard 為何不夠，缺一不可。</li>
+        <li><strong>False positive 過濾</strong> — 明確排除 LLM reviewer 常見誤判，包含：magic number（有命名常數時）、fire-and-forget（設計如此時）、test fixture（測試資料不算 magic number）、未修改的程式碼（除非 CRITICAL 安全問題）。</li>
+      </ol>
+    </section>
+
+    <!-- Contributing -->
+    <section class="doc-section" id="contributing">
+      <h2>Contributing</h2>
+
+      <h3>新增 Agent</h3>
+      <ol>
+        <li>在 <code>agents/</code> 建立 <code>&lt;name&gt;.md</code>，frontmatter 至少包含 <code>name</code>、<code>description</code>、<code>color</code>、<code>model</code>、<code>tools</code></li>
+        <li>若需加入 <code>/review-pr</code> 並行流程，更新 <code>commands/review-pr.md</code> 的 agent 列表</li>
+        <li>更新 <code>README.md</code> 的 Agents 表格</li>
+        <li>更新 <code>docs/index.html</code> 的 agent 列表與 stats 數字</li>
+      </ol>
+
+      <h3>新增 Command</h3>
+      <ol>
+        <li>在 <code>commands/</code> 建立 <code>&lt;name&gt;.md</code>，frontmatter 包含 <code>description</code>、<code>argument-hint</code></li>
+        <li>更新 <code>README.md</code> 的 Slash Commands 表格</li>
+        <li>更新 <code>docs/index.html</code> 的側欄導覽、Commands 區塊、stats 數字</li>
+      </ol>
+
+      <h3>Agent Frontmatter 格式</h3>
+      <div class="codeblock">
+        <div class="codeblock-header">agents/my-reviewer.md</div>
+        <pre><code>---
+name: my-reviewer
+description: &lt;一句話說明觸發時機，Claude 靠這段決定何時使用&gt;
+tools: [Read, Grep, Glob, Bash]
+model: sonnet          <span class="c-comment"># sonnet | opus | haiku</span>
+color: blue            <span class="c-comment"># green | red | blue | cyan | yellow | magenta</span>
+---
+
+&lt;agent prompt content&gt;</code></pre>
+      </div>
+
+      <div class="callout callout-warn">
+        <strong>Prompt Defense Baseline</strong>
+        所有 agent 必須在 prompt 開頭包含 Prompt Defense Baseline，防止 prompt injection 攻擊。參考現有 agent 的格式。
+      </div>
+    </section>
+
+  </main>
 </div>
 
-<!-- Stats -->
-<div class="stats">
-  <div class="stat">
-    <div class="stat-num">24</div>
-    <div class="stat-label">Reviewer Agents</div>
-  </div>
-  <div class="stat">
-    <div class="stat-num">9</div>
-    <div class="stat-label">Slash Commands</div>
-  </div>
-  <div class="stat">
-    <div class="stat-num">3</div>
-    <div class="stat-label">Auto-trigger Skills</div>
-  </div>
-  <div class="stat">
-    <div class="stat-num">&gt;80%</div>
-    <div class="stat-label">Confidence threshold</div>
-  </div>
-</div>
-
-<!-- Features -->
-<section>
-  <h2><span class="icon">✨</span>亮點</h2>
-  <div class="features">
-    <div class="feature-card">
-      <div class="feature-icon">🤖</div>
-      <div class="feature-title">24 個 Reviewer Agent</div>
-      <div class="feature-desc">TypeScript、Python、Go、Rust、Java、Kotlin、Swift、C++、C#、F#、Django、FastAPI、Flutter、DB、Healthcare、ML……</div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">⚡</div>
-      <div class="feature-title">六 Agent 並行 PR Review</div>
-      <div class="feature-desc"><code>/review-pr</code> 同時啟動 6 個專項 agent，confidence &lt; 80% 自動過濾，結果更可靠。</div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🔒</div>
-      <div class="feature-title">多層安全掃描</div>
-      <div class="feature-desc">OWASP Top 10、PHI/HIPAA 合規、Claude Code 設定漏洞掃描，遇 CRITICAL 自動警報。</div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🎯</div>
-      <div class="feature-title">高信心原則</div>
-      <div class="feature-desc">只報告 &gt;80% 確信的問題。零 finding = APPROVE，不製造雜訊，不強行挑毛病。</div>
-    </div>
-  </div>
-</section>
-
-<!-- Quick start -->
-<section id="quickstart">
-  <h2><span class="icon">🚀</span>Quick Start</h2>
-  <div class="quickstart">
-    <div class="qs-header">
-      <span class="qs-dot" style="background:#f85149"></span>
-      <span class="qs-dot" style="background:#d29922"></span>
-      <span class="qs-dot" style="background:#3fb950"></span>
-      <span style="margin-left:.5rem">Claude Code</span>
-    </div>
-    <pre><span class="c-comment"># 1. 在 Claude Code 中安裝 Plugin</span>
-<span class="c-cmd">/plugin</span>
-<span class="c-comment"># 搜尋 jurislm/code-review → 安裝 → /reload-plugins</span>
-
-<span class="c-comment"># 2. 審查目前 uncommitted 變更</span>
-<span class="c-cmd">/code-review</span>
-
-<span class="c-comment"># 3. 審查 PR</span>
-<span class="c-cmd">/code-review</span> <span class="c-arg">123</span>
-
-<span class="c-comment"># 4. 六 agent 並行 PR review（支援 --focus）</span>
-<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus security</span></pre>
-  </div>
-</section>
-
-<!-- Agents -->
-<section id="agents">
-  <h2><span class="icon">🤖</span>Agent 生態系統</h2>
-  <div class="agents-section">
-
-    <div class="agents-group">
-      <div class="agents-group-title">通用主審</div>
-      <div class="agent-tags">
-        <span class="tag"><span class="tag-dot dot-green"></span>code-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-red"></span>security-reviewer</span>
-      </div>
-    </div>
-
-    <div class="agents-group">
-      <div class="agents-group-title">/review-pr 協作 Agents</div>
-      <div class="agent-tags">
-        <span class="tag"><span class="tag-dot dot-cyan"></span>comment-analyzer</span>
-        <span class="tag"><span class="tag-dot dot-cyan"></span>pr-test-analyzer</span>
-        <span class="tag"><span class="tag-dot dot-cyan"></span>silent-failure-hunter</span>
-        <span class="tag"><span class="tag-dot dot-cyan"></span>type-design-analyzer</span>
-        <span class="tag"><span class="tag-dot dot-cyan"></span>code-simplifier</span>
-      </div>
-    </div>
-
-    <div class="agents-group">
-      <div class="agents-group-title">語言 / 框架專項</div>
-      <div class="agent-tags">
-        <span class="tag"><span class="tag-dot dot-blue"></span>typescript-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-blue"></span>python-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-blue"></span>go-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-blue"></span>rust-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-blue"></span>cpp-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-blue"></span>csharp-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-blue"></span>java-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-blue"></span>kotlin-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-blue"></span>swift-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-blue"></span>fsharp-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-yellow"></span>django-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-yellow"></span>fastapi-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-yellow"></span>flutter-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-yellow"></span>database-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-yellow"></span>network-config-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-purple"></span>healthcare-reviewer</span>
-        <span class="tag"><span class="tag-dot dot-purple"></span>mle-reviewer</span>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- Footer -->
 <footer>
-  <p>MIT License &nbsp;·&nbsp; <a href="https://github.com/jurislm/code-review">jurislm/code-review</a> &nbsp;·&nbsp; Built for <a href="https://claude.ai/code">Claude Code</a></p>
+  <span>MIT License · <a href="https://github.com/jurislm/code-review">jurislm/code-review</a></span>
+  <span>Built for <a href="https://claude.ai/code">Claude Code</a> · v1.0.0</span>
 </footer>
+
+<script>
+  // Active nav highlight on scroll
+  const items = document.querySelectorAll('.nav-item, .nav-sub');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const id = e.target.id;
+        items.forEach(a => {
+          a.classList.toggle('active', a.getAttribute('href') === '#' + id);
+        });
+      }
+    });
+  }, { rootMargin: '-48px 0px -70% 0px' });
+
+  document.querySelectorAll('section[id], h3[id]').forEach(el => observer.observe(el));
+</script>
 
 </body>
 </html>
