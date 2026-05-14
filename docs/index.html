@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Code Review Plugin for Claude Code</title>
+  <meta name="description" content="24-agent code review ecosystem for Claude Code — language-specific reviewers, 6-agent parallel PR review, and security scanning" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --border: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #f78166;
+      --blue: #58a6ff;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --purple: #bc8cff;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+    }
+
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      background: rgba(13,17,23,.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: .75rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 100;
+    }
+    .nav-brand { font-weight: 700; font-size: 1rem; color: var(--text); display: flex; align-items: center; gap: .5rem; }
+    .nav-links { display: flex; gap: 1.5rem; font-size: .9rem; color: var(--muted); }
+    .nav-links a { color: var(--muted); }
+    .nav-links a:hover { color: var(--text); }
+
+    /* ── Hero ── */
+    .hero {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 5rem 2rem 4rem;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(247,129,102,.12);
+      color: var(--accent);
+      border: 1px solid rgba(247,129,102,.3);
+      border-radius: 2rem;
+      padding: .25rem .9rem;
+      font-size: .8rem;
+      font-weight: 600;
+      letter-spacing: .04em;
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -.02em;
+      line-height: 1.15;
+      margin-bottom: 1.2rem;
+    }
+    h1 span { color: var(--accent); }
+    .hero-desc {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 560px;
+      margin: 0 auto 2.5rem;
+    }
+    .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      padding: .6rem 1.4rem;
+      border-radius: .5rem;
+      font-size: .95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; text-decoration: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+
+    /* ── Stats ── */
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      padding: 2.5rem 2rem;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .stat { text-align: center; }
+    .stat-num { font-size: 2rem; font-weight: 800; color: var(--text); }
+    .stat-label { font-size: .85rem; color: var(--muted); margin-top: .2rem; }
+
+    /* ── Sections ── */
+    section { max-width: 900px; margin: 0 auto; padding: 4rem 2rem; }
+    h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; }
+    h2 .icon { margin-right: .4rem; }
+
+    /* ── Features ── */
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: .75rem;
+      padding: 1.4rem;
+    }
+    .feature-icon { font-size: 1.6rem; margin-bottom: .8rem; }
+    .feature-title { font-weight: 700; margin-bottom: .4rem; font-size: .95rem; }
+    .feature-desc { font-size: .85rem; color: var(--muted); }
+
+    /* ── Quick start ── */
+    .quickstart { background: var(--surface); border: 1px solid var(--border); border-radius: .75rem; overflow: hidden; }
+    .qs-header { padding: .7rem 1.2rem; border-bottom: 1px solid var(--border); font-size: .8rem; color: var(--muted); display: flex; align-items: center; gap: .5rem; }
+    .qs-dot { width: 12px; height: 12px; border-radius: 50%; }
+    pre {
+      padding: 1.4rem;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+      font-size: .87rem;
+      overflow-x: auto;
+      line-height: 1.8;
+    }
+    .c-comment { color: var(--muted); }
+    .c-cmd { color: var(--green); }
+    .c-arg { color: var(--blue); }
+    .c-flag { color: var(--yellow); }
+
+    /* ── Agents grid ── */
+    .agents-section { background: var(--surface); border-radius: .75rem; border: 1px solid var(--border); overflow: hidden; }
+    .agents-group { padding: 1.2rem 1.4rem; border-bottom: 1px solid var(--border); }
+    .agents-group:last-child { border-bottom: none; }
+    .agents-group-title { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: .9rem; }
+    .agent-tags { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: .4rem;
+      padding: .25rem .7rem;
+      font-size: .8rem;
+      font-family: "SFMono-Regular", Consolas, monospace;
+    }
+    .tag-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-green  { background: #3fb950; }
+    .dot-red    { background: #f85149; }
+    .dot-cyan   { background: #39d3f0; }
+    .dot-blue   { background: #58a6ff; }
+    .dot-yellow { background: #d29922; }
+    .dot-purple { background: #bc8cff; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem;
+      text-align: center;
+      font-size: .85rem;
+      color: var(--muted);
+    }
+    footer a { color: var(--muted); }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <span class="nav-brand">⬡ code-review</span>
+  <div class="nav-links">
+    <a href="#quickstart">Quick Start</a>
+    <a href="#agents">Agents</a>
+    <a href="https://github.com/jurislm/code-review">GitHub</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-badge">Claude Code Plugin</div>
+  <h1>Code Review,<br /><span>Done Right.</span></h1>
+  <p class="hero-desc">
+    24 個語言 / 框架專項 reviewer agent、六 agent 並行 PR review、OWASP 安全掃描——全部以 Claude Code plugin 形式一鍵安裝。
+  </p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="#quickstart">30 秒安裝</a>
+    <a class="btn btn-secondary" href="https://github.com/jurislm/code-review">View on GitHub</a>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stat">
+    <div class="stat-num">24</div>
+    <div class="stat-label">Reviewer Agents</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">9</div>
+    <div class="stat-label">Slash Commands</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">3</div>
+    <div class="stat-label">Auto-trigger Skills</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">&gt;80%</div>
+    <div class="stat-label">Confidence threshold</div>
+  </div>
+</div>
+
+<!-- Features -->
+<section>
+  <h2><span class="icon">✨</span>亮點</h2>
+  <div class="features">
+    <div class="feature-card">
+      <div class="feature-icon">🤖</div>
+      <div class="feature-title">24 個 Reviewer Agent</div>
+      <div class="feature-desc">TypeScript、Python、Go、Rust、Java、Kotlin、Swift、C++、C#、F#、Django、FastAPI、Flutter、DB、Healthcare、ML……</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">六 Agent 並行 PR Review</div>
+      <div class="feature-desc"><code>/review-pr</code> 同時啟動 6 個專項 agent，confidence &lt; 80% 自動過濾，結果更可靠。</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔒</div>
+      <div class="feature-title">多層安全掃描</div>
+      <div class="feature-desc">OWASP Top 10、PHI/HIPAA 合規、Claude Code 設定漏洞掃描，遇 CRITICAL 自動警報。</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎯</div>
+      <div class="feature-title">高信心原則</div>
+      <div class="feature-desc">只報告 &gt;80% 確信的問題。零 finding = APPROVE，不製造雜訊，不強行挑毛病。</div>
+    </div>
+  </div>
+</section>
+
+<!-- Quick start -->
+<section id="quickstart">
+  <h2><span class="icon">🚀</span>Quick Start</h2>
+  <div class="quickstart">
+    <div class="qs-header">
+      <span class="qs-dot" style="background:#f85149"></span>
+      <span class="qs-dot" style="background:#d29922"></span>
+      <span class="qs-dot" style="background:#3fb950"></span>
+      <span style="margin-left:.5rem">Claude Code</span>
+    </div>
+    <pre><span class="c-comment"># 1. 在 Claude Code 中安裝 Plugin</span>
+<span class="c-cmd">/plugin</span>
+<span class="c-comment"># 搜尋 jurislm/code-review → 安裝 → /reload-plugins</span>
+
+<span class="c-comment"># 2. 審查目前 uncommitted 變更</span>
+<span class="c-cmd">/code-review</span>
+
+<span class="c-comment"># 3. 審查 PR</span>
+<span class="c-cmd">/code-review</span> <span class="c-arg">123</span>
+
+<span class="c-comment"># 4. 六 agent 並行 PR review（支援 --focus）</span>
+<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus security</span></pre>
+  </div>
+</section>
+
+<!-- Agents -->
+<section id="agents">
+  <h2><span class="icon">🤖</span>Agent 生態系統</h2>
+  <div class="agents-section">
+
+    <div class="agents-group">
+      <div class="agents-group-title">通用主審</div>
+      <div class="agent-tags">
+        <span class="tag"><span class="tag-dot dot-green"></span>code-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-red"></span>security-reviewer</span>
+      </div>
+    </div>
+
+    <div class="agents-group">
+      <div class="agents-group-title">/review-pr 協作 Agents</div>
+      <div class="agent-tags">
+        <span class="tag"><span class="tag-dot dot-cyan"></span>comment-analyzer</span>
+        <span class="tag"><span class="tag-dot dot-cyan"></span>pr-test-analyzer</span>
+        <span class="tag"><span class="tag-dot dot-cyan"></span>silent-failure-hunter</span>
+        <span class="tag"><span class="tag-dot dot-cyan"></span>type-design-analyzer</span>
+        <span class="tag"><span class="tag-dot dot-cyan"></span>code-simplifier</span>
+      </div>
+    </div>
+
+    <div class="agents-group">
+      <div class="agents-group-title">語言 / 框架專項</div>
+      <div class="agent-tags">
+        <span class="tag"><span class="tag-dot dot-blue"></span>typescript-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-blue"></span>python-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-blue"></span>go-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-blue"></span>rust-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-blue"></span>cpp-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-blue"></span>csharp-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-blue"></span>java-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-blue"></span>kotlin-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-blue"></span>swift-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-blue"></span>fsharp-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-yellow"></span>django-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-yellow"></span>fastapi-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-yellow"></span>flutter-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-yellow"></span>database-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-yellow"></span>network-config-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-purple"></span>healthcare-reviewer</span>
+        <span class="tag"><span class="tag-dot dot-purple"></span>mle-reviewer</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <p>MIT License &nbsp;·&nbsp; <a href="https://github.com/jurislm/code-review">jurislm/code-review</a> &nbsp;·&nbsp; Built for <a href="https://claude.ai/code">Claude Code</a></p>
+</footer>
+
+</body>
+</html>
