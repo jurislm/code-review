@@ -188,7 +188,7 @@ Form recommendation based on findings:
 | Any CRITICAL issues | **BLOCK** — must fix before merge |
 
 Special cases:
-- Draft PR → Always use **COMMENT** (not approve/block)
+- Draft PR (GitHub only) → Always use **COMMENT** (not approve/block). Note: Bitbucket Cloud has no draft state — states are OPEN/MERGED/DECLINED/SUPERSEDED only.
 - Only docs/config changes → Lighter review, focus on correctness
 - Explicit `--approve` or `--request-changes` flag → Override decision (but still report all findings)
 
@@ -328,11 +328,13 @@ Same as GitHub PR Review Mode Phase 2 — read `CLAUDE.md`, planning artifacts, 
 
 ### Phase 3 — REVIEW
 
-Get changed files:
+Get changed files（分頁：若 response 含 `next` 欄位，繼續 fetch 直到 `next` 為 null）：
 ```bash
 curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/diffstat" \
-  | jq '.values[] | {path: .new.path, status}'
+  | jq '.values[] | {path: (.new.path // .old.path), status}'
+# status 值：added | modified | removed | renamed
+# .new 在 removed 時為 null，需 fallback 到 .old.path
 ```
 
 Read each changed file in full at the PR head commit:
@@ -377,15 +379,16 @@ curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
 
 For inline comments on specific lines:
 ```bash
+# 新增行（新版本的行號）→ 用 "to"
 curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   -H "Content-Type: application/json" \
-  -d "{
-    \"content\": {\"raw\": \"$COMMENT\"},
-    \"inline\": {
-      \"path\": \"$FILEPATH\",
-      \"to\": $LINE_NUMBER
-    }
-  }" \
+  -d "{\"content\":{\"raw\":\"$COMMENT\"},\"inline\":{\"path\":\"$FILEPATH\",\"to\":$LINE_NUMBER}}" \
+  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/comments"
+
+# 刪除行（舊版本的行號）→ 用 "from"
+curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+  -H "Content-Type: application/json" \
+  -d "{\"content\":{\"raw\":\"$COMMENT\"},\"inline\":{\"path\":\"$FILEPATH\",\"from\":$LINE_NUMBER}}" \
   "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/comments"
 ```
 
