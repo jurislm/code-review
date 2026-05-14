@@ -36,6 +36,7 @@
         "swift",
         "cpp",
         "csharp",
+        "fsharp",
         "django",
         "fastapi",
         "database",
