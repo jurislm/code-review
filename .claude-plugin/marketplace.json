@@ -1,0 +1,48 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "code-review",
+  "owner": {
+    "name": "Terry Chen",
+    "email": "zxtw17985321@gmail.com"
+  },
+  "metadata": {
+    "description": "Complete code review ecosystem: 20+ language/framework reviewer agents, parallel PR review commands, and security scanning skills",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "code-review",
+      "source": "./",
+      "description": "Complete code review ecosystem: 20+ language/framework reviewer agents, parallel PR review commands, and security scanning skills",
+      "version": "1.0.0",
+      "author": {
+        "name": "Terry Chen",
+        "email": "zxtw17985321@gmail.com"
+      },
+      "homepage": "https://github.com/jurislm/code-review",
+      "repository": "https://github.com/jurislm/code-review",
+      "license": "MIT",
+      "keywords": [
+        "code-review",
+        "security",
+        "pr-review",
+        "typescript",
+        "python",
+        "go",
+        "rust",
+        "flutter",
+        "java",
+        "kotlin",
+        "swift",
+        "cpp",
+        "csharp",
+        "django",
+        "fastapi",
+        "database",
+        "healthcare",
+        "ml"
+      ],
+      "category": "development"
+    }
+  ]
+}
