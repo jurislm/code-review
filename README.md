@@ -5,6 +5,8 @@
 ![Commands](https://img.shields.io/badge/Commands-9-green)
 ![Skills](https://img.shields.io/badge/Skills-3-purple)
 ![Platform](https://img.shields.io/badge/Platform-Claude_Code-orange)
+![GitHub](https://img.shields.io/badge/PR-GitHub-181717?logo=github)
+![Bitbucket](https://img.shields.io/badge/PR-Bitbucket-0052CC?logo=bitbucket)
 
 完整 code review 生態系統，以 Claude Code plugin 形式發布。提供 24 個語言/框架專項 reviewer agent、9 個 slash command、以及 3 個安全 review skill。
 
@@ -16,6 +18,7 @@
 |---|---|
 | 🤖 **24 個 Reviewer Agent** | TypeScript · Python · Go · Rust · Java · Kotlin · Swift · C++ · C# · F# · Django · FastAPI · Flutter · DB · Healthcare · ML |
 | ⚡ **六 Agent 並行 PR Review** | `/review-pr` 同時啟動 6 個專項 agent，confidence < 80% 自動過濾 |
+| 🔗 **雙平台 PR Review** | 自動偵測 GitHub（`gh` CLI）或 Bitbucket Cloud（REST API v2.0） |
 | 🔒 **多層安全掃描** | OWASP Top 10 · PHI/HIPAA · Claude Code 設定掃描 |
 | 🎯 **高信心原則** | 只報告 >80% 確信的問題，零 finding = APPROVE，不製造雜訊 |
 
@@ -37,8 +40,12 @@
 # 審查目前 uncommitted 變更
 /code-review
 
-# 審查 PR（傳號碼或 URL）
+# 審查 GitHub PR
 /code-review 123
+/code-review https://github.com/owner/repo/pull/123
+
+# 審查 Bitbucket PR
+/code-review https://bitbucket.org/workspace/repo/pull-requests/123
 
 # 六 agent 並行 PR review
 /review-pr 123
@@ -118,19 +125,12 @@ cp -r skills/* ~/.claude/skills/
 
 ### 2. PR Review
 
-支援 **GitHub** 和 **Bitbucket Cloud**，自動偵測平台。
+支援 **GitHub** 和 **Bitbucket Cloud**，自動依 URL 或 git remote 偵測平台。
 
-**GitHub**（需安裝 `gh` CLI）：
-```
-/code-review 123
-/code-review https://github.com/owner/repo/pull/123
-```
-
-**Bitbucket Cloud**（需設定環境變數，見下方）：
-```
-/code-review 123
-/code-review https://bitbucket.org/workspace/repo/pull-requests/123
-```
+| 平台 | 前置條件 | 指令範例 |
+|------|---------|---------|
+| **GitHub** | 安裝 [`gh` CLI](https://cli.github.com/) | `/code-review 123` |
+| **Bitbucket Cloud** | 設定 `BB_USERNAME` + `BB_APP_PASSWORD`（見下方） | `/code-review https://bitbucket.org/ws/repo/pull-requests/123` |
 
 決策邏輯：
 
@@ -143,14 +143,18 @@ cp -r skills/* ~/.claude/skills/
 
 #### Bitbucket 設定
 
-在 `~/.zshenv`（或 `~/.bashrc`）加入：
+在 `~/.zshenv` 加入（**必須是 App Password，非普通密碼**）：
 
 ```bash
 export BB_USERNAME="your-bitbucket-username"
 export BB_APP_PASSWORD="your-app-password"
 ```
 
-Bitbucket App Password 建立方式：Bitbucket → Settings → Personal settings → App passwords → 勾選 Pull requests (Read + Write)。
+App Password 建立：Bitbucket → Settings → Personal settings → App passwords
+
+需勾選以下權限：
+- **Repositories**: Read
+- **Pull requests**: Read + Write（comment / approve / request-changes 必須）
 
 ### 3. 多 Agent 並行 PR Review
 
