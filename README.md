@@ -1,6 +1,82 @@
 # Code Review Plugin for Claude Code
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+![Agents](https://img.shields.io/badge/Agents-24-blue)
+![Commands](https://img.shields.io/badge/Commands-9-green)
+![Skills](https://img.shields.io/badge/Skills-3-purple)
+![Platform](https://img.shields.io/badge/Platform-Claude_Code-orange)
+
 完整 code review 生態系統，以 Claude Code plugin 形式發布。提供 24 個語言/框架專項 reviewer agent、9 個 slash command、以及 3 個安全 review skill。
+
+---
+
+## ✨ 亮點
+
+| | |
+|---|---|
+| 🤖 **24 個 Reviewer Agent** | TypeScript · Python · Go · Rust · Java · Kotlin · Swift · C++ · C# · F# · Django · FastAPI · Flutter · DB · Healthcare · ML |
+| ⚡ **六 Agent 並行 PR Review** | `/review-pr` 同時啟動 6 個專項 agent，confidence < 80% 自動過濾 |
+| 🔒 **多層安全掃描** | OWASP Top 10 · PHI/HIPAA · Claude Code 設定掃描 |
+| 🎯 **高信心原則** | 只報告 >80% 確信的問題，零 finding = APPROVE，不製造雜訊 |
+
+---
+
+## 🚀 30 秒快速開始
+
+在 Claude Code 中執行：
+
+```
+/plugin
+```
+
+搜尋 `jurislm/code-review`，點擊安裝，再執行 `/reload-plugins` 套用。
+
+**立即使用：**
+
+```bash
+# 審查目前 uncommitted 變更
+/code-review
+
+# 審查 PR（傳號碼或 URL）
+/code-review 123
+
+# 六 agent 並行 PR review
+/review-pr 123
+```
+
+---
+
+## 架構總覽
+
+```
+code-review plugin
+├── Commands（9 個 slash commands）
+│   ├── /code-review          本地 diff 或 PR review
+│   ├── /review-pr            六 agent 並行 + --focus 過濾
+│   └── /python-review ... /flutter-review  語言專項
+│
+├── Agents（24 個 reviewer agents）
+│   ├── 通用主審
+│   │   ├── code-reviewer     主審，含 false positive 過濾
+│   │   └── security-reviewer OWASP Top 10，遇 CRITICAL 警報
+│   ├── PR 協作（搭配 /review-pr）
+│   │   ├── comment-analyzer  行內 comment 品質
+│   │   ├── pr-test-analyzer  測試覆蓋
+│   │   ├── silent-failure-hunter  swallowed error 偵測
+│   │   ├── type-design-analyzer  型別設計
+│   │   └── code-simplifier   過度複雜實作
+│   └── 語言 / 框架專項（17 個）
+│       TypeScript · Python · Go · Rust · C++ · C# · Java
+│       Kotlin · Swift · F# · Django · FastAPI · Flutter
+│       Database · Network · Healthcare · MLE
+│
+└── Skills（3 個，自動觸發）
+    ├── security-review       實作 auth / 處理 user input 時觸發
+    ├── security-scan         掃描 .claude/ 設定安全漏洞
+    └── flutter-dart-code-review  Review Flutter / Dart 時觸發
+```
+
+---
 
 ## 安裝
 
@@ -19,16 +95,10 @@
 ### 手動安裝
 
 ```bash
-# Clone repo
 git clone https://github.com/jurislm/code-review.git
 
-# 複製 commands 到全域
 cp commands/*.md ~/.claude/commands/
-
-# 複製 agents 到全域
 cp agents/*.md ~/.claude/agents/
-
-# 複製 skills 到全域
 cp -r skills/* ~/.claude/skills/
 ```
 
@@ -55,8 +125,6 @@ cp -r skills/* ~/.claude/skills/
 /code-review https://github.com/owner/repo/pull/123
 ```
 
-流程（8 phases）：Fetch → Context → Review → Validate → Decide → Report → Publish → Output
-
 決策邏輯：
 
 | 結果 | 條件 |
@@ -80,7 +148,7 @@ cp -r skills/* ~/.claude/skills/
 
 ### 4. 語言專項 Review
 
-針對特定語言，直接叫用對應 command：
+針對特定語言叫用對應 command（不傳參數則預設審查 staged changes）：
 
 ```
 /python-review
@@ -92,11 +160,9 @@ cp -r skills/* ~/.claude/skills/
 /flutter-review
 ```
 
-所有語言 command 可傳入目錄或檔案路徑作為參數，不傳則預設審查 staged changes。
-
 ### 5. 直接呼叫 Agent
 
-在對話中 @ 指定 agent，或描述任務讓 Claude 自動選用：
+在對話中描述任務，Claude 會自動選用對應 agent：
 
 ```
 @code-reviewer 請審查這段 auth middleware
@@ -202,3 +268,9 @@ code-review/
     ├── security-scan/
     └── flutter-dart-code-review/
 ```
+
+---
+
+## License
+
+MIT © [Terry Chen](https://github.com/jurislm)
