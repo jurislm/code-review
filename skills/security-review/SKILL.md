@@ -497,6 +497,12 @@ Before ANY production deployment:
 - [Supabase Security](https://supabase.com/docs/guides/auth)
 - [Web Security Academy](https://portswigger.net/web-security)
 
+## Cloud Infrastructure Security
+
+For cloud infrastructure-specific security review (IAM, network policies, storage permissions, container security), see the companion reference:
+
+→ [cloud-infrastructure-security.md](./cloud-infrastructure-security.md)
+
 ---
 
 **Remember**: Security is not optional. One vulnerability can compromise the entire platform. When in doubt, err on the side of caution.

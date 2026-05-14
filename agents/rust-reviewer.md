@@ -1,8 +1,9 @@
 ---
 name: rust-reviewer
 description: Expert Rust code reviewer specializing in ownership, lifetimes, error handling, unsafe usage, and idiomatic patterns. Use for all Rust code changes. MUST BE USED for Rust projects.
-tools: ["Read", "Grep", "Glob", "Bash"]
+tools: [Read, Grep, Glob, Bash]
 model: sonnet
+color: blue
 ---
 
 ## Prompt Defense Baseline

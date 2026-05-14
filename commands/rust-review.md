@@ -1,5 +1,6 @@
 ---
 description: Comprehensive Rust code review for ownership, lifetimes, error handling, unsafe usage, and idiomatic patterns. Invokes the rust-reviewer agent.
+argument-hint: [file-or-directory | blank for staged changes]
 ---
 
 # Rust Code Review

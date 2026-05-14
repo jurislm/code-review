@@ -1,5 +1,6 @@
 ---
 description: Comprehensive Python code review for PEP 8 compliance, type hints, security, and Pythonic idioms. Invokes the python-reviewer agent.
+argument-hint: [file-or-directory | blank for staged changes]
 ---
 
 # Python Code Review

@@ -1,5 +1,6 @@
 ---
 description: Comprehensive PR review using specialized agents
+argument-hint: [PR-number | PR-URL] [--focus security|performance|types|tests]
 ---
 
 Run a comprehensive multi-perspective review of a pull request.

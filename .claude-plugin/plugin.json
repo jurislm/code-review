@@ -1,0 +1,33 @@
+{
+  "name": "code-review",
+  "version": "1.0.0",
+  "description": "Complete code review ecosystem: 20+ language/framework reviewer agents, parallel PR review commands, and security scanning skills",
+  "author": {
+    "name": "Terry Chen",
+    "email": "zxtw17985321@gmail.com",
+    "url": "https://github.com/jurislm/code-review"
+  },
+  "repository": "https://github.com/jurislm/code-review",
+  "license": "MIT",
+  "keywords": [
+    "code-review",
+    "security",
+    "pr-review",
+    "typescript",
+    "python",
+    "go",
+    "rust",
+    "flutter",
+    "java",
+    "kotlin",
+    "swift",
+    "cpp",
+    "csharp",
+    "fsharp",
+    "django",
+    "fastapi",
+    "database",
+    "healthcare",
+    "ml"
+  ]
+}

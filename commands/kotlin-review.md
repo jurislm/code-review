@@ -1,5 +1,6 @@
 ---
 description: Comprehensive Kotlin code review for idiomatic patterns, null safety, coroutine safety, and security. Invokes the kotlin-reviewer agent.
+argument-hint: [file-or-directory | blank for staged changes]
 ---
 
 # Kotlin Code Review

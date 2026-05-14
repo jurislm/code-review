@@ -1,5 +1,6 @@
 ---
 description: Comprehensive C++ code review for memory safety, modern C++ idioms, concurrency, and security. Invokes the cpp-reviewer agent.
+argument-hint: [file-or-directory | blank for staged changes]
 ---
 
 # C++ Code Review

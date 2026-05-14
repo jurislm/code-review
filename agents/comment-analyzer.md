@@ -2,6 +2,7 @@
 name: comment-analyzer
 description: Analyze code comments for accuracy, completeness, maintainability, and comment rot risk.
 model: sonnet
+color: cyan
 tools: [Read, Grep, Glob]
 ---
 

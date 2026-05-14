@@ -1,5 +1,6 @@
 ---
 description: Comprehensive Go code review for idiomatic patterns, concurrency safety, error handling, and security. Invokes the go-reviewer agent.
+argument-hint: [file-or-directory | blank for staged changes]
 ---
 
 # Go Code Review

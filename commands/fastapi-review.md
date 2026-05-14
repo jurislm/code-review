@@ -1,5 +1,6 @@
 ---
 description: Review a FastAPI application for architecture, async correctness, dependency injection, Pydantic schemas, security, performance, and testability.
+argument-hint: [file-or-directory | blank for staged changes]
 ---
 
 # FastAPI Review
