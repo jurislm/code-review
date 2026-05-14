@@ -118,11 +118,18 @@ cp -r skills/* ~/.claude/skills/
 
 ### 2. PR Review
 
-傳入 PR 號碼或 URL：
+支援 **GitHub** 和 **Bitbucket Cloud**，自動偵測平台。
 
+**GitHub**（需安裝 `gh` CLI）：
 ```
 /code-review 123
 /code-review https://github.com/owner/repo/pull/123
+```
+
+**Bitbucket Cloud**（需設定環境變數，見下方）：
+```
+/code-review 123
+/code-review https://bitbucket.org/workspace/repo/pull-requests/123
 ```
 
 決策邏輯：
@@ -133,6 +140,17 @@ cp -r skills/* ~/.claude/skills/
 | **REQUEST CHANGES** | 任一 HIGH finding 或 validation 失敗 |
 | **APPROVE with comments** | 僅 MEDIUM / LOW finding |
 | **APPROVE** | 零 finding |
+
+#### Bitbucket 設定
+
+在 `~/.zshenv`（或 `~/.bashrc`）加入：
+
+```bash
+export BB_USERNAME="your-bitbucket-username"
+export BB_APP_PASSWORD="your-app-password"
+```
+
+Bitbucket App Password 建立方式：Bitbucket → Settings → Personal settings → App passwords → 勾選 Pull requests (Read + Write)。
 
 ### 3. 多 Agent 並行 PR Review
 

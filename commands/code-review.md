@@ -1,5 +1,5 @@
 ---
-description: Code review — local uncommitted changes or GitHub PR (pass PR number/URL for PR mode)
+description: Code review — local uncommitted changes or GitHub/Bitbucket PR (pass PR number/URL for PR mode)
 argument-hint: [pr-number | pr-url | blank for local review]
 ---
 
@@ -13,11 +13,17 @@ argument-hint: [pr-number | pr-url | blank for local review]
 
 ## Mode Selection
 
-If `$ARGUMENTS` contains a PR number, PR URL, or `--pr`:
-→ Jump to **PR Review Mode** below.
-
-Otherwise:
+If `$ARGUMENTS` is blank:
 → Use **Local Review Mode**.
+
+If `$ARGUMENTS` contains a PR number, PR URL, or `--pr`:
+
+1. Detect platform:
+   - URL contains `bitbucket.org` → **Bitbucket PR Review Mode**
+   - URL contains `github.com` → **GitHub PR Review Mode**
+   - Number only → run `git remote get-url origin`:
+     - Contains `bitbucket.org` → **Bitbucket PR Review Mode**
+     - Otherwise → **GitHub PR Review Mode**
 
 ---
 
@@ -73,7 +79,7 @@ Never approve code with security vulnerabilities.
 
 ---
 
-## PR Review Mode
+## GitHub PR Review Mode
 
 Comprehensive GitHub PR review — fetches diff, reads full files, runs validation, posts review.
 
@@ -188,7 +194,7 @@ Special cases:
 
 ### Phase 6 — REPORT
 
-Create review artifact at `.claude/reviews/pr-<NUMBER>-review.md` unless the repo already uses legacy `.claude/PRPs/reviews/` for this workstream:
+Create review artifact at `.claude/reviews/pr-<NUMBER>-review.md`:
 
 ```markdown
 # PR Review: #<NUMBER> — <TITLE>
@@ -243,7 +249,7 @@ gh pr review <NUMBER> --request-changes --body "<summary with required fixes>"
 gh pr review <NUMBER> --comment --body "<summary>"
 ```
 
-For inline comments on specific lines, use the GitHub review comments API:
+For inline comments on specific lines:
 ```bash
 gh api "repos/{owner}/{repo}/pulls/<NUMBER>/comments" \
   -f body="<comment>" \
@@ -251,14 +257,6 @@ gh api "repos/{owner}/{repo}/pulls/<NUMBER>/comments" \
   -F line=<line-number> \
   -f side="RIGHT" \
   -f commit_id="$(gh pr view <NUMBER> --json headRefOid --jq .headRefOid)"
-```
-
-Alternatively, post a single review with multiple inline comments at once:
-```bash
-gh api "repos/{owner}/{repo}/pulls/<NUMBER>/reviews" \
-  -f event="COMMENT" \
-  -f body="<overall summary>" \
-  --input comments.json  # [{"path": "file", "line": N, "body": "comment"}, ...]
 ```
 
 ### Phase 8 — OUTPUT
@@ -275,15 +273,144 @@ Validation: <pass_count>/<total_count> checks passed
 Artifacts:
   Review: .claude/reviews/pr-<NUMBER>-review.md
   GitHub: <PR URL>
+```
 
-Next steps:
-  - <contextual suggestions based on decision>
+---
+
+## Bitbucket PR Review Mode
+
+Comprehensive Bitbucket Cloud PR review via REST API v2.0.
+
+**Prerequisites**: Set `BB_USERNAME` and `BB_APP_PASSWORD` environment variables.
+Verify with: `echo $BB_USERNAME`
+
+### Phase 1 — FETCH
+
+Extract workspace, repo slug, and PR ID from input:
+
+| Input | Action |
+|---|---|
+| Number (e.g. `42`) | Parse workspace/slug from `git remote get-url origin` |
+| URL (`bitbucket.org/{ws}/{slug}/pull-requests/42`) | Extract ws, slug, ID directly |
+
+Parse remote URL (supports both HTTPS and SSH formats):
+```bash
+REMOTE=$(git remote get-url origin)
+# HTTPS: https://bitbucket.org/workspace/repo.git
+# SSH:   git@bitbucket.org:workspace/repo.git
+```
+
+Fetch PR metadata:
+```bash
+curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}" \
+  | jq '{
+      title,
+      description,
+      author: .author.display_name,
+      source_branch: .source.branch.name,
+      dest_branch: .destination.branch.name,
+      head_commit: .source.commit.hash
+    }'
+```
+
+Fetch diff:
+```bash
+curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/diff"
+```
+
+If credentials fail (HTTP 401), stop: "Set BB_USERNAME and BB_APP_PASSWORD environment variables."
+
+### Phase 2 — CONTEXT
+
+Same as GitHub PR Review Mode Phase 2 — read `CLAUDE.md`, planning artifacts, PR description.
+
+### Phase 3 — REVIEW
+
+Get changed files:
+```bash
+curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/diffstat" \
+  | jq '.values[] | {path: .new.path, status}'
+```
+
+Read each changed file in full at the PR head commit:
+```bash
+curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/src/{head_commit}/{filepath}"
+```
+
+Apply the same 7-category review checklist as GitHub PR Review Mode Phase 3.
+
+### Phase 4 — VALIDATE
+
+Same as GitHub PR Review Mode Phase 4 — detect project type and run local validation commands.
+
+### Phase 5 — DECIDE
+
+Same decision logic as GitHub PR Review Mode Phase 5.
+
+### Phase 6 — REPORT
+
+Create review artifact at `.claude/reviews/pr-<ID>-review.md` using the same format as GitHub PR Review Mode Phase 6.
+
+### Phase 7 — PUBLISH
+
+Post review result to Bitbucket:
+
+```bash
+# Post overall review comment (all cases)
+curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+  -H "Content-Type: application/json" \
+  -d "{\"content\": {\"raw\": \"$REVIEW_SUMMARY\"}}" \
+  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/comments"
+
+# If APPROVE
+curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/approve"
+
+# If REQUEST CHANGES or BLOCK
+curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/request-changes"
+```
+
+For inline comments on specific lines:
+```bash
+curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"content\": {\"raw\": \"$COMMENT\"},
+    \"inline\": {
+      \"path\": \"$FILEPATH\",
+      \"to\": $LINE_NUMBER
+    }
+  }" \
+  "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/comments"
+```
+
+### Phase 8 — OUTPUT
+
+Report to user:
+
+```
+PR #<ID>: <TITLE>
+Platform: Bitbucket Cloud
+Decision: <APPROVE|REQUEST_CHANGES|BLOCK>
+
+Issues: <critical_count> critical, <high_count> high, <medium_count> medium, <low_count> low
+Validation: <pass_count>/<total_count> checks passed
+
+Artifacts:
+  Review: .claude/reviews/pr-<ID>-review.md
+  Bitbucket: https://bitbucket.org/{workspace}/{slug}/pull-requests/{id}
 ```
 
 ---
 
 ## Edge Cases
 
-- **No `gh` CLI**: Fall back to local-only review (read the diff, skip GitHub publish). Warn user.
+- **No `gh` CLI (GitHub mode)**: Fall back to local-only review, skip publish. Warn user.
+- **Missing BB credentials (Bitbucket mode)**: Stop with instructions to set `BB_USERNAME` and `BB_APP_PASSWORD`.
 - **Diverged branches**: Suggest `git fetch origin && git rebase origin/<base>` before review.
 - **Large PRs (>50 files)**: Warn about review scope. Focus on source changes first, then tests, then config/docs.
