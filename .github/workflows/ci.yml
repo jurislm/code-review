@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate plugin.json
+        run: jq . .claude-plugin/plugin.json
+      - name: Validate marketplace.json
+        run: jq . .claude-plugin/marketplace.json
+      - name: Validate release-please-config.json
+        run: jq . release-please-config.json
