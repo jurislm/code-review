@@ -7,42 +7,44 @@
   <meta name="description" content="24-agent code review ecosystem for Claude Code — complete technical reference for commands, agents, and skills." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Nunito:ital,wght@0,300;0,400;0,500;0,600;1,300&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Nunito:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #0e0e12;
-      --bg2:       #13131a;
-      --surface:   #18181f;
-      --surface2:  #1f1f28;
-      --border:    #28283a;
-      --border2:   #36364e;
-      --text:      #eeedf0;
-      --text2:     #c0bdd0;
-      --muted:     #8a88a8;
+      --bg:        #f5f3ec;
+      --bg2:       #edebe2;
+      --surface:   #ffffff;
+      --surface2:  #f8f6f0;
+      --border:    #dbd7cc;
+      --border2:   #c7c2b4;
+      --text:      #1c1917;
+      --text2:     #57524a;
+      --muted:     #8c8070;
 
-      --lime:      #a3e635;
-      --lime-dim:  #84cc16;
-      --lime-bg:   rgba(163,230,53,.07);
-      --lime-glow: rgba(163,230,53,.22);
+      --green:     #1a6b44;
+      --green-dim: #145535;
+      --green-bg:  rgba(26,107,68,.07);
+      --green-bdr: rgba(26,107,68,.2);
 
-      --orange:    #fb923c;
-      --red:       #f87171;
-      --blue:      #60a5fa;
-      --cyan:      #22d3ee;
-      --purple:    #c084fc;
-      --yellow:    #fbbf24;
-      --green:     #4ade80;
+      --orange:    #b85a18;
+      --red:       #a83030;
+      --blue:      #1e5fa8;
+      --amber:     #a06818;
+      --cyan:      #1a7a88;
+      --purple:    #6b3fa0;
 
-      --font-display: 'Bricolage Grotesque', sans-serif;
+      --font-display: 'Cormorant Garamond', serif;
       --font-body:    'Nunito', sans-serif;
       --font-mono:    'JetBrains Mono', monospace;
 
-      --sidebar-w: 236px;
+      --sidebar-w: 240px;
       --nav-h:     54px;
-      --r:         8px;
-      --r-sm:      5px;
+      --r:         6px;
+      --r-sm:      4px;
+
+      --shadow-sm: 0 1px 3px rgba(28,25,23,.08), 0 1px 2px rgba(28,25,23,.06);
+      --shadow-md: 0 4px 12px rgba(28,25,23,.1), 0 2px 4px rgba(28,25,23,.06);
     }
 
     html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 2rem); }
@@ -51,31 +53,21 @@
       background: var(--bg);
       color: var(--text);
       font-family: var(--font-body);
-      font-size: 14.5px;
+      font-size: 15px;
       line-height: 1.75;
     }
 
-    /* Subtle noise overlay */
-    body::after {
-      content: '';
-      position: fixed;
-      inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
-      pointer-events: none;
-      z-index: 9999;
-    }
-
-    a { color: var(--blue); text-decoration: none; transition: color .15s; }
-    a:hover { color: #93c5fd; }
+    a { color: var(--green); text-decoration: none; transition: color .15s; }
+    a:hover { color: var(--green-dim); text-decoration: underline; text-underline-offset: 2px; }
 
     code {
       font-family: var(--font-mono);
-      font-size: .79em;
+      font-size: .78em;
       background: var(--surface2);
-      border: 1px solid var(--border2);
+      border: 1px solid var(--border);
       border-radius: var(--r-sm);
-      padding: .1em .42em;
-      color: #bfd8ff;
+      padding: .1em .4em;
+      color: var(--green-dim);
     }
 
     /* ── Scroll progress ── */
@@ -84,9 +76,8 @@
       top: 0; left: 0;
       height: 2px;
       width: 0%;
-      background: linear-gradient(90deg, var(--lime), var(--lime-dim));
+      background: linear-gradient(90deg, var(--green), var(--green-dim));
       z-index: 1001;
-      box-shadow: 0 0 10px var(--lime-glow);
       transition: width .1s linear;
     }
 
@@ -95,63 +86,62 @@
       position: fixed;
       top: 0; left: 0; right: 0;
       height: var(--nav-h);
-      background: rgba(9,9,11,.88);
-      backdrop-filter: blur(20px) saturate(160%);
+      background: rgba(245,243,236,.95);
+      backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 1.5rem;
+      padding: 0 1.75rem;
       z-index: 200;
     }
 
     .topnav-brand {
       font-family: var(--font-display);
-      font-weight: 700;
-      font-size: .92rem;
+      font-weight: 600;
+      font-size: 1.1rem;
+      letter-spacing: .01em;
       display: flex;
       align-items: center;
-      gap: .55rem;
+      gap: .6rem;
       color: var(--text);
-      letter-spacing: -.02em;
     }
 
     .brand-logo {
       width: 26px; height: 26px;
-      background: var(--lime);
-      border-radius: 6px;
+      background: var(--green);
+      border-radius: var(--r-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: .65rem;
-      font-weight: 800;
-      color: #0a0a0c;
-      box-shadow: 0 0 16px rgba(163,230,53,.35);
-      flex-shrink: 0;
       font-family: var(--font-display);
-      letter-spacing: -.02em;
+      font-size: .72rem;
+      font-weight: 700;
+      font-style: italic;
+      color: #fff;
+      flex-shrink: 0;
     }
 
     .brand-version {
       font-family: var(--font-mono);
-      font-size: .63rem;
-      background: var(--surface);
+      font-size: .6rem;
+      background: var(--bg2);
       border: 1px solid var(--border2);
       border-radius: 3rem;
       padding: .1rem .5rem;
       color: var(--muted);
-      font-weight: 400;
     }
 
     .topnav-links { display: flex; gap: .15rem; }
     .topnav-links a {
-      color: var(--muted);
-      font-size: .8rem;
-      padding: .3rem .65rem;
+      color: var(--text2);
+      font-size: .82rem;
+      padding: .3rem .7rem;
       border-radius: var(--r-sm);
       transition: color .15s, background .15s;
+      text-decoration: none;
     }
-    .topnav-links a:hover { color: var(--text); background: var(--surface); }
+    .topnav-links a:hover { color: var(--text); background: var(--bg2); text-decoration: none; }
 
     /* ── Layout ── */
     .layout {
@@ -170,15 +160,15 @@
       overflow-y: auto;
       overflow-x: hidden;
       border-right: 1px solid var(--border);
-      padding: 1.5rem 0 2.5rem;
-      background: rgba(9,9,11,.55);
+      padding: 1.75rem 0 2.5rem;
+      background: var(--bg2);
       animation: sideIn .4s cubic-bezier(.22,1,.36,1) both;
     }
-    .sidebar::-webkit-scrollbar { width: 2px; }
+    .sidebar::-webkit-scrollbar { width: 3px; }
     .sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
     @keyframes sideIn {
-      from { opacity: 0; transform: translateX(-8px); }
+      from { opacity: 0; transform: translateX(-6px); }
       to   { opacity: 1; transform: none; }
     }
 
@@ -186,12 +176,12 @@
 
     .nav-group-label {
       font-family: var(--font-mono);
-      font-size: .59rem;
+      font-size: .58rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: .12em;
       color: var(--muted);
-      padding: 0 1.2rem .5rem;
+      padding: 0 1.25rem .5rem;
       display: flex;
       align-items: center;
       gap: .5rem;
@@ -207,13 +197,13 @@
       display: flex;
       align-items: center;
       gap: .45rem;
-      padding: .3rem 1.2rem;
-      font-size: .8rem;
+      padding: .3rem 1.25rem;
+      font-size: .82rem;
       color: var(--text2);
       border-left: 2px solid transparent;
       transition: all .15s;
+      text-decoration: none;
     }
-    /* nav-link base already uses --text2 which is now #c0bdd0 — readable */
     .nav-link .dot {
       width: 4px; height: 4px;
       border-radius: 50%;
@@ -224,28 +214,26 @@
     .nav-link:hover { color: var(--text); text-decoration: none; }
     .nav-link:hover .dot { background: var(--muted); }
     .nav-link.active {
-      color: var(--lime);
-      border-left-color: var(--lime);
-      background: linear-gradient(90deg, var(--lime-bg), transparent);
+      color: var(--green);
+      border-left-color: var(--green);
+      background: var(--green-bg);
+      font-weight: 500;
     }
-    .nav-link.active .dot {
-      background: var(--lime);
-      box-shadow: 0 0 6px var(--lime-glow);
-      transform: scale(1.5);
-    }
+    .nav-link.active .dot { background: var(--green); }
 
     .nav-sub-link {
       display: block;
-      padding: .22rem 1.2rem .22rem 2.45rem;
-      font-size: .75rem;
-      color: var(--text2);
+      padding: .2rem 1.25rem .2rem 2.5rem;
+      font-size: .77rem;
+      color: var(--muted);
       transition: color .15s;
       position: relative;
+      text-decoration: none;
     }
     .nav-sub-link::before {
       content: '└';
       position: absolute;
-      left: 1.65rem;
+      left: 1.7rem;
       color: var(--border2);
       font-size: .68rem;
     }
@@ -255,11 +243,11 @@
     .main {
       flex: 1;
       min-width: 0;
-      padding: 3.5rem 5rem 6rem 3.5rem;
-      animation: pageIn .45s cubic-bezier(.22,1,.36,1) both;
+      padding: 3.5rem 4.5rem 6rem 3.5rem;
+      animation: pageIn .5s cubic-bezier(.22,1,.36,1) both;
     }
     @keyframes pageIn {
-      from { opacity: 0; transform: translateY(16px); }
+      from { opacity: 0; transform: translateY(14px); }
       to   { opacity: 1; transform: none; }
     }
 
@@ -268,25 +256,29 @@
     /* ── Hero ── */
     h1 {
       font-family: var(--font-display);
-      font-size: clamp(2.4rem, 5vw, 3.4rem);
-      font-weight: 800;
-      letter-spacing: -.045em;
-      line-height: 1.08;
-      margin-bottom: .65rem;
+      font-size: clamp(2.8rem, 5vw, 4rem);
+      font-weight: 700;
+      letter-spacing: -.01em;
+      line-height: 1.05;
+      margin-bottom: .75rem;
       color: var(--text);
     }
-    h1 em { font-style: normal; color: var(--lime); }
+    h1 em {
+      font-style: italic;
+      color: var(--green);
+    }
 
     /* ── Stat strip ── */
     .stat-strip {
       display: flex;
       flex-wrap: wrap;
       gap: 0;
-      margin: 1.5rem 0 2rem;
+      margin: 1.75rem 0 2rem;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--r);
       overflow: hidden;
+      box-shadow: var(--shadow-sm);
       position: relative;
     }
     .stat-strip::before {
@@ -294,28 +286,27 @@
       position: absolute;
       left: 0; top: 0; bottom: 0;
       width: 3px;
-      background: linear-gradient(180deg, var(--lime), var(--lime-dim));
-      box-shadow: 0 0 14px var(--lime-glow);
+      background: var(--green);
     }
     .stat-item {
       display: flex;
       flex-direction: column;
-      gap: .12rem;
-      padding: 1.25rem 1.5rem;
+      gap: .15rem;
+      padding: 1.25rem 1.75rem;
       border-right: 1px solid var(--border);
     }
     .stat-item:last-child { border-right: none; }
     .stat-num {
       font-family: var(--font-display);
-      font-size: 2.1rem;
-      font-weight: 800;
-      letter-spacing: -.05em;
-      color: var(--lime);
+      font-size: 2.4rem;
+      font-weight: 700;
+      letter-spacing: -.02em;
+      color: var(--green);
       line-height: 1;
     }
     .stat-label {
       font-family: var(--font-mono);
-      font-size: .59rem;
+      font-size: .58rem;
       font-weight: 500;
       text-transform: uppercase;
       letter-spacing: .1em;
@@ -325,35 +316,39 @@
     /* ── Typography ── */
     h2 {
       font-family: var(--font-display);
-      font-size: 1.2rem;
-      font-weight: 700;
-      letter-spacing: -.025em;
-      margin-bottom: 1.2rem;
+      font-size: 1.6rem;
+      font-weight: 600;
+      letter-spacing: -.01em;
+      margin-bottom: 1.25rem;
       padding-bottom: .75rem;
       border-bottom: 1px solid var(--border);
       color: var(--text);
       display: flex;
-      align-items: center;
-      gap: .65rem;
+      align-items: baseline;
+      gap: .75rem;
     }
     h2::before {
       content: '';
-      width: 3px; height: 1em;
-      background: linear-gradient(180deg, var(--lime), var(--lime-dim));
+      display: inline-block;
+      width: 3px;
+      height: .95em;
+      background: var(--green);
       border-radius: 2px;
       flex-shrink: 0;
-      box-shadow: 0 0 8px var(--lime-glow);
+      align-self: center;
     }
+
     .h2-tag {
       font-family: var(--font-mono);
-      font-size: .64rem;
+      font-size: .58rem;
       color: var(--muted);
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      border-radius: .3rem;
-      padding: .1rem .42rem;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: .25rem;
+      padding: .08rem .4rem;
       margin-left: auto;
       font-weight: 400;
+      align-self: center;
     }
 
     h3 {
@@ -363,18 +358,21 @@
       text-transform: uppercase;
       letter-spacing: .1em;
       color: var(--muted);
-      margin: 2rem 0 .8rem;
+      margin: 2rem 0 .85rem;
     }
 
     p { margin-bottom: .9rem; color: var(--text); line-height: 1.8; }
     ul, ol { padding-left: 1.4rem; margin-bottom: .9rem; color: var(--text); }
-    li { margin-bottom: .35rem; line-height: 1.7; }
+    li { margin-bottom: .35rem; line-height: 1.75; }
     li strong { color: var(--text); font-weight: 600; }
 
     .lead {
-      font-size: .95rem;
-      color: var(--text);
-      line-height: 1.85;
+      font-size: 1rem;
+      color: var(--text2);
+      font-style: italic;
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      line-height: 1.7;
       margin-bottom: 1.75rem;
     }
 
@@ -384,37 +382,37 @@
       display: inline-flex;
       align-items: center;
       font-family: var(--font-mono);
-      font-size: .63rem;
+      font-size: .62rem;
       font-weight: 500;
-      padding: .2rem .65rem;
-      border-radius: 2rem;
+      padding: .22rem .7rem;
+      border-radius: 3rem;
       border: 1px solid;
       letter-spacing: .02em;
     }
-    .badge-gray   { background: rgba(82,82,106,.1);   border-color: var(--border2);          color: var(--muted); }
-    .badge-lime   { background: rgba(163,230,53,.07); border-color: rgba(163,230,53,.28);    color: var(--lime); }
-    .badge-blue   { background: rgba(96,165,250,.07); border-color: rgba(96,165,250,.28);    color: var(--blue); }
-    .badge-purple { background: rgba(192,132,252,.07);border-color: rgba(192,132,252,.28);   color: var(--purple); }
+    .badge-gray   { background: var(--bg2);       border-color: var(--border2); color: var(--muted); }
+    .badge-lime   { background: var(--green-bg);  border-color: var(--green-bdr); color: var(--green); }
+    .badge-blue   { background: rgba(30,95,168,.06); border-color: rgba(30,95,168,.2); color: var(--blue); }
+    .badge-purple { background: rgba(107,63,160,.06); border-color: rgba(107,63,160,.2); color: var(--purple); }
 
     /* ── Callout ── */
     .callout {
       display: flex;
-      gap: .85rem;
+      gap: .9rem;
       border: 1px solid;
       border-radius: var(--r);
-      padding: .9rem 1.1rem;
+      padding: 1rem 1.15rem;
       margin: 1.2rem 0 1.5rem;
-      font-size: .845rem;
+      font-size: .875rem;
       line-height: 1.7;
     }
     .callout-icon {
       flex-shrink: 0;
       width: 1.6rem; height: 1.6rem;
-      border-radius: .35rem;
+      border-radius: .3rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: .82rem;
+      font-size: .8rem;
       margin-top: .05rem;
     }
     .callout-body { flex: 1; min-width: 0; }
@@ -426,17 +424,17 @@
       text-transform: uppercase;
       letter-spacing: .08em;
     }
-    .callout p { margin: 0; font-size: .845rem; color: var(--text); }
+    .callout p { margin: 0; font-size: .875rem; font-style: normal; font-family: var(--font-body); }
 
-    .callout-tip  { border-color: rgba(74,222,128,.2);  background: rgba(74,222,128,.04); }
-    .callout-note { border-color: rgba(96,165,250,.2);  background: rgba(96,165,250,.04); }
-    .callout-warn { border-color: rgba(251,191,36,.2);  background: rgba(251,191,36,.04); }
-    .callout-tip  .callout-icon { background: rgba(74,222,128,.1); color: #4ade80; }
-    .callout-note .callout-icon { background: rgba(96,165,250,.1); color: var(--blue); }
-    .callout-warn .callout-icon { background: rgba(251,191,36,.1); color: var(--yellow); }
-    .callout-tip  strong { color: #4ade80; }
+    .callout-tip  { border-color: rgba(26,107,68,.2);  background: rgba(26,107,68,.04); }
+    .callout-note { border-color: rgba(30,95,168,.2);  background: rgba(30,95,168,.04); }
+    .callout-warn { border-color: rgba(160,104,24,.2); background: rgba(160,104,24,.04); }
+    .callout-tip  .callout-icon { background: rgba(26,107,68,.1);  color: var(--green); }
+    .callout-note .callout-icon { background: rgba(30,95,168,.1);  color: var(--blue); }
+    .callout-warn .callout-icon { background: rgba(160,104,24,.1); color: var(--amber); }
+    .callout-tip  strong { color: var(--green); }
     .callout-note strong { color: var(--blue); }
-    .callout-warn strong { color: var(--yellow); }
+    .callout-warn strong { color: var(--amber); }
 
     /* ── Code block ── */
     .codeblock {
@@ -444,25 +442,26 @@
       border: 1px solid var(--border);
       border-radius: var(--r);
       overflow: hidden;
-      margin: .95rem 0 1.5rem;
+      margin: 1rem 0 1.5rem;
+      box-shadow: var(--shadow-sm);
     }
     .codeblock-header {
-      padding: .48rem .9rem;
+      padding: .5rem 1rem;
       border-bottom: 1px solid var(--border);
-      background: var(--bg2);
+      background: var(--surface2);
       font-family: var(--font-mono);
-      font-size: .63rem;
+      font-size: .62rem;
       color: var(--muted);
       display: flex;
       align-items: center;
       gap: .6rem;
     }
     .cb-dots { display: flex; gap: .3rem; }
-    .cb-dot { width: 9px; height: 9px; border-radius: 50%; opacity: .75; }
+    .cb-dot { width: 9px; height: 9px; border-radius: 50%; opacity: .6; }
     .codeblock pre {
-      padding: 1rem 1.1rem;
+      padding: 1.1rem 1.2rem;
       font-family: var(--font-mono);
-      font-size: .795rem;
+      font-size: .8rem;
       overflow-x: auto;
       line-height: 1.9;
     }
@@ -470,11 +469,11 @@
       background: none; border: none; padding: 0;
       font-size: inherit; color: var(--text2);
     }
-    .c-comment { color: #7070a0; font-style: italic; }
-    .c-cmd     { color: var(--lime); font-weight: 600; }
+    .c-comment { color: var(--border2); font-style: italic; }
+    .c-cmd     { color: var(--green); font-weight: 600; }
     .c-arg     { color: var(--blue); }
-    .c-flag    { color: var(--yellow); }
-    .c-str     { color: #93c5fd; }
+    .c-flag    { color: var(--amber); }
+    .c-str     { color: var(--cyan); }
 
     /* ── Table ── */
     .table-wrap {
@@ -482,13 +481,14 @@
       margin: .9rem 0 1.5rem;
       border: 1px solid var(--border);
       border-radius: var(--r);
+      box-shadow: var(--shadow-sm);
     }
-    table { width: 100%; border-collapse: collapse; font-size: .84rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .855rem; background: var(--surface); }
     th {
       text-align: left;
-      padding: .6rem 1rem;
+      padding: .65rem 1rem;
       font-family: var(--font-mono);
-      font-size: .61rem;
+      font-size: .6rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: .09em;
@@ -497,7 +497,7 @@
       border-bottom: 1px solid var(--border);
     }
     td {
-      padding: .65rem 1rem;
+      padding: .7rem 1rem;
       border-bottom: 1px solid var(--border);
       vertical-align: top;
       color: var(--text);
@@ -505,22 +505,23 @@
     }
     tr:last-child td { border-bottom: none; }
     tbody tr { transition: background .1s; }
-    tbody tr:hover td { background: rgba(255,255,255,.018); }
+    tbody tr:hover td { background: var(--bg2); }
     td code { font-size: .76em; }
 
     /* ── Agent card ── */
     .agent-card {
       border: 1px solid var(--border);
       border-radius: var(--r);
-      padding: 1.1rem 1.2rem 1rem 1.3rem;
-      margin-bottom: .55rem;
+      padding: 1.1rem 1.2rem 1rem 1.35rem;
+      margin-bottom: .6rem;
       display: flex;
       gap: 1rem;
       align-items: flex-start;
       background: var(--surface);
       position: relative;
       overflow: hidden;
-      transition: border-color .2s, box-shadow .2s, background .2s;
+      box-shadow: var(--shadow-sm);
+      transition: box-shadow .2s, border-color .2s;
     }
     .agent-card::before {
       content: '';
@@ -528,23 +529,16 @@
       left: 0; top: 0; bottom: 0;
       width: 3px;
       background: var(--agent-color, var(--border2));
-      transition: width .2s, box-shadow .2s;
     }
     .agent-card:hover {
-      border-color: var(--agent-color, var(--border2));
-      background: var(--surface2);
-      box-shadow: 0 4px 24px rgba(0,0,0,.28);
-    }
-    .agent-card:hover::before {
-      width: 4px;
-      box-shadow: 0 0 12px var(--agent-color, transparent);
+      box-shadow: var(--shadow-md);
+      border-color: var(--border2);
     }
     .agent-dot {
       width: 8px; height: 8px;
       border-radius: 50%;
       margin-top: .5rem;
       flex-shrink: 0;
-      box-shadow: 0 0 8px currentColor;
     }
     .agent-body { flex: 1; min-width: 0; }
     .agent-name {
@@ -552,29 +546,27 @@
       font-weight: 600;
       font-size: .855rem;
       color: var(--text);
-      letter-spacing: -.01em;
     }
     .agent-desc {
-      font-size: .82rem;
+      font-size: .845rem;
       color: var(--text);
       margin-top: .3rem;
       line-height: 1.65;
     }
-    .agent-pills { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .6rem; }
+    .agent-pills { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .65rem; }
     .pill {
       font-family: var(--font-mono);
-      font-size: .61rem;
-      padding: .1rem .48rem;
+      font-size: .6rem;
+      padding: .1rem .5rem;
       border-radius: 3rem;
-      border: 1px solid var(--border2);
+      border: 1px solid var(--border);
       color: var(--muted);
       background: var(--bg2);
-      letter-spacing: .01em;
     }
     .pill-model {
-      border-color: rgba(163,230,53,.22);
-      color: var(--lime);
-      background: rgba(163,230,53,.05);
+      border-color: var(--green-bdr);
+      color: var(--green);
+      background: var(--green-bg);
     }
 
     /* ── Severity ── */
@@ -584,33 +576,26 @@
       font-size: .63rem;
       font-weight: 600;
       padding: .12rem .55rem;
-      border-radius: .35rem;
+      border-radius: .3rem;
       letter-spacing: .05em;
     }
-    .sev-critical { background: rgba(248,113,113,.1); color: var(--red);    border: 1px solid rgba(248,113,113,.25); }
-    .sev-high     { background: rgba(251,146,60,.1);  color: var(--orange); border: 1px solid rgba(251,146,60,.25); }
-    .sev-medium   { background: rgba(96,165,250,.08); color: var(--blue);   border: 1px solid rgba(96,165,250,.2); }
-    .sev-low      { background: rgba(82,82,106,.1);   color: var(--muted);  border: 1px solid var(--border2); }
+    .sev-critical { background: rgba(168,48,48,.08);   color: var(--red);    border: 1px solid rgba(168,48,48,.2); }
+    .sev-high     { background: rgba(184,90,24,.08);   color: var(--orange); border: 1px solid rgba(184,90,24,.2); }
+    .sev-medium   { background: rgba(30,95,168,.07);   color: var(--blue);   border: 1px solid rgba(30,95,168,.2); }
+    .sev-low      { background: rgba(140,128,112,.1);  color: var(--muted);  border: 1px solid var(--border2); }
 
     /* ── Decision table ── */
-    .decision td:first-child { font-family: var(--font-mono); font-weight: 600; font-size: .82rem; }
+    .decision td:first-child { font-family: var(--font-mono); font-weight: 600; font-size: .84rem; }
     .t-block   { color: var(--red); }
     .t-changes { color: var(--orange); }
     .t-approvec{ color: var(--blue); }
-    .t-approve { color: var(--lime); }
-
-    /* ── Divider ── */
-    .divider {
-      height: 1px;
-      background: linear-gradient(90deg, transparent, var(--border), transparent);
-      margin: 3rem 0;
-    }
+    .t-approve { color: var(--green); }
 
     /* ── Footer ── */
     footer {
       border-top: 1px solid var(--border);
-      padding: 1.75rem 3.5rem;
-      font-size: .77rem;
+      padding: 1.75rem 4.5rem;
+      font-size: .78rem;
       color: var(--muted);
       display: flex;
       justify-content: space-between;
@@ -618,17 +603,17 @@
       flex-wrap: wrap;
       gap: .5rem;
       font-family: var(--font-mono);
-      background: rgba(9,9,11,.7);
+      background: var(--bg2);
     }
-    footer a { color: var(--muted); transition: color .15s; }
-    footer a:hover { color: var(--lime); text-decoration: none; }
+    footer a { color: var(--muted); transition: color .15s; text-decoration: none; }
+    footer a:hover { color: var(--green); }
 
     @media (max-width: 768px) {
       .sidebar { display: none; }
       .main { padding: 2rem 1.25rem 4rem; }
       footer { padding: 1.25rem; flex-direction: column; gap: .3rem; text-align: center; }
-      .stat-item { padding: 1rem 1.1rem; }
-      .stat-num { font-size: 1.6rem; }
+      .stat-item { padding: 1rem 1.25rem; }
+      .stat-num { font-size: 1.8rem; }
     }
   </style>
 </head>
@@ -641,7 +626,7 @@
   <div class="topnav-brand">
     <div class="brand-logo">CR</div>
     code-review
-    <span class="brand-version">v1.0.0</span>
+    <span class="brand-version">v1.1.0</span>
   </div>
   <div class="topnav-links">
     <a href="https://github.com/jurislm/code-review">GitHub</a>
@@ -757,9 +742,9 @@
       <div class="codeblock">
         <div class="codeblock-header">
           <div class="cb-dots">
-            <div class="cb-dot" style="background:#f87171"></div>
-            <div class="cb-dot" style="background:#fbbf24"></div>
-            <div class="cb-dot" style="background:#4ade80"></div>
+            <div class="cb-dot" style="background:#c0392b"></div>
+            <div class="cb-dot" style="background:#e67e22"></div>
+            <div class="cb-dot" style="background:#27ae60"></div>
           </div>
           bash
         </div>
@@ -777,9 +762,9 @@ cp -r skills/* ~/.claude/skills/</code></pre>
       <div class="codeblock">
         <div class="codeblock-header">
           <div class="cb-dots">
-            <div class="cb-dot" style="background:#f87171"></div>
-            <div class="cb-dot" style="background:#fbbf24"></div>
-            <div class="cb-dot" style="background:#4ade80"></div>
+            <div class="cb-dot" style="background:#c0392b"></div>
+            <div class="cb-dot" style="background:#e67e22"></div>
+            <div class="cb-dot" style="background:#27ae60"></div>
           </div>
           ~/.zshenv
         </div>
@@ -804,9 +789,9 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
       <div class="codeblock">
         <div class="codeblock-header">
           <div class="cb-dots">
-            <div class="cb-dot" style="background:#f87171"></div>
-            <div class="cb-dot" style="background:#fbbf24"></div>
-            <div class="cb-dot" style="background:#4ade80"></div>
+            <div class="cb-dot" style="background:#c0392b"></div>
+            <div class="cb-dot" style="background:#e67e22"></div>
+            <div class="cb-dot" style="background:#27ae60"></div>
           </div>
           syntax
         </div>
@@ -818,9 +803,9 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
       <div class="codeblock">
         <div class="codeblock-header">
           <div class="cb-dots">
-            <div class="cb-dot" style="background:#f87171"></div>
-            <div class="cb-dot" style="background:#fbbf24"></div>
-            <div class="cb-dot" style="background:#4ade80"></div>
+            <div class="cb-dot" style="background:#c0392b"></div>
+            <div class="cb-dot" style="background:#e67e22"></div>
+            <div class="cb-dot" style="background:#27ae60"></div>
           </div>
           example
         </div>
@@ -838,9 +823,9 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
       <div class="codeblock">
         <div class="codeblock-header">
           <div class="cb-dots">
-            <div class="cb-dot" style="background:#f87171"></div>
-            <div class="cb-dot" style="background:#fbbf24"></div>
-            <div class="cb-dot" style="background:#4ade80"></div>
+            <div class="cb-dot" style="background:#c0392b"></div>
+            <div class="cb-dot" style="background:#e67e22"></div>
+            <div class="cb-dot" style="background:#27ae60"></div>
           </div>
           example
         </div>
@@ -854,9 +839,9 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
       <div class="codeblock">
         <div class="codeblock-header">
           <div class="cb-dots">
-            <div class="cb-dot" style="background:#f87171"></div>
-            <div class="cb-dot" style="background:#fbbf24"></div>
-            <div class="cb-dot" style="background:#4ade80"></div>
+            <div class="cb-dot" style="background:#c0392b"></div>
+            <div class="cb-dot" style="background:#e67e22"></div>
+            <div class="cb-dot" style="background:#27ae60"></div>
           </div>
           example
         </div>
@@ -873,9 +858,9 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
       <div class="codeblock">
         <div class="codeblock-header">
           <div class="cb-dots">
-            <div class="cb-dot" style="background:#f87171"></div>
-            <div class="cb-dot" style="background:#fbbf24"></div>
-            <div class="cb-dot" style="background:#4ade80"></div>
+            <div class="cb-dot" style="background:#c0392b"></div>
+            <div class="cb-dot" style="background:#e67e22"></div>
+            <div class="cb-dot" style="background:#27ae60"></div>
           </div>
           syntax
         </div>
@@ -885,9 +870,9 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
       <div class="codeblock">
         <div class="codeblock-header">
           <div class="cb-dots">
-            <div class="cb-dot" style="background:#f87171"></div>
-            <div class="cb-dot" style="background:#fbbf24"></div>
-            <div class="cb-dot" style="background:#4ade80"></div>
+            <div class="cb-dot" style="background:#c0392b"></div>
+            <div class="cb-dot" style="background:#e67e22"></div>
+            <div class="cb-dot" style="background:#27ae60"></div>
           </div>
           examples
         </div>
@@ -938,8 +923,8 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
     <section class="doc-section" id="agents-general">
       <h2>Agents — 通用主審 <span class="h2-tag">agents</span></h2>
 
-      <div class="agent-card" style="--agent-color: #4ade80">
-        <div class="agent-dot" style="color:#4ade80; background:#4ade80"></div>
+      <div class="agent-card" style="--agent-color: #1a6b44">
+        <div class="agent-dot" style="background:#1a6b44"></div>
         <div class="agent-body">
           <div class="agent-name">code-reviewer</div>
           <div class="agent-desc">主審 agent，負責整體程式碼品質、安全性、可維護性。包含嚴格的 false positive 過濾機制，針對 React / Node.js 有專項規則。修改任何程式碼後應立即使用。</div>
@@ -951,8 +936,8 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         </div>
       </div>
 
-      <div class="agent-card" style="--agent-color: #f87171">
-        <div class="agent-dot" style="color:#f87171; background:#f87171"></div>
+      <div class="agent-card" style="--agent-color: #a83030">
+        <div class="agent-dot" style="background:#a83030"></div>
         <div class="agent-body">
           <div class="agent-name">security-reviewer</div>
           <div class="agent-desc">安全漏洞偵測與修補專家。掃描 OWASP Top 10、hardcoded secrets、SSRF、injection、unsafe crypto。遇到 CRITICAL finding 發出緊急警報，可執行 <code>npm audit</code> 與 ESLint security plugin。</div>
@@ -970,8 +955,8 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
       <h2>Agents — PR 協作 <span class="h2-tag">agents</span></h2>
       <p>以下 agent 由 <code>/review-pr</code> 並行調用，也可在對話中單獨使用。</p>
 
-      <div class="agent-card" style="--agent-color: #22d3ee">
-        <div class="agent-dot" style="color:#22d3ee; background:#22d3ee"></div>
+      <div class="agent-card" style="--agent-color: #1a7a88">
+        <div class="agent-dot" style="background:#1a7a88"></div>
         <div class="agent-body">
           <div class="agent-name">comment-analyzer</div>
           <div class="agent-desc">分析程式碼行內 comment 的準確性、完整性、可維護性，以及 comment rot 風險（comment 與實際行為脫節）。</div>
@@ -979,8 +964,8 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         </div>
       </div>
 
-      <div class="agent-card" style="--agent-color: #22d3ee">
-        <div class="agent-dot" style="color:#22d3ee; background:#22d3ee"></div>
+      <div class="agent-card" style="--agent-color: #1a7a88">
+        <div class="agent-dot" style="background:#1a7a88"></div>
         <div class="agent-body">
           <div class="agent-name">pr-test-analyzer</div>
           <div class="agent-desc">審查 PR 測試覆蓋品質與完整性，重點在行為涵蓋（behavioral coverage）與真實 bug 防護，而非表層語法檢查。</div>
@@ -988,8 +973,8 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         </div>
       </div>
 
-      <div class="agent-card" style="--agent-color: #22d3ee">
-        <div class="agent-dot" style="color:#22d3ee; background:#22d3ee"></div>
+      <div class="agent-card" style="--agent-color: #1a7a88">
+        <div class="agent-dot" style="background:#1a7a88"></div>
         <div class="agent-body">
           <div class="agent-name">silent-failure-hunter</div>
           <div class="agent-desc">專門偵測 swallowed error、ignored promise、bad fallback、缺失的錯誤傳遞——這類問題不會讓程式崩潰，但會讓 bug 靜默擴散。</div>
@@ -997,8 +982,8 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         </div>
       </div>
 
-      <div class="agent-card" style="--agent-color: #22d3ee">
-        <div class="agent-dot" style="color:#22d3ee; background:#22d3ee"></div>
+      <div class="agent-card" style="--agent-color: #1a7a88">
+        <div class="agent-dot" style="background:#1a7a88"></div>
         <div class="agent-body">
           <div class="agent-name">type-design-analyzer</div>
           <div class="agent-desc">分析型別設計的封裝性、invariant 表達、有效性與強制性。找出過度鬆散的 type（如裸 <code>string</code> 代表有語義的值）或未充分利用型別系統的模式。</div>
@@ -1006,8 +991,8 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         </div>
       </div>
 
-      <div class="agent-card" style="--agent-color: #22d3ee">
-        <div class="agent-dot" style="color:#22d3ee; background:#22d3ee"></div>
+      <div class="agent-card" style="--agent-color: #1a7a88">
+        <div class="agent-dot" style="background:#1a7a88"></div>
         <div class="agent-body">
           <div class="agent-name">code-simplifier</div>
           <div class="agent-desc">找出過度複雜的實作，提出簡化方案。在保留行為的前提下，改善清晰度、一致性與可維護性，不引入不必要的抽象。</div>
@@ -1020,7 +1005,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
     <section class="doc-section" id="agents-lang">
       <h2>Agents — 語言 / 框架專項 <span class="h2-tag">agents</span></h2>
 
-      <h3>通用語言（Sonnet · 藍色）</h3>
+      <h3>通用語言（Sonnet）</h3>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Agent</th><th>專項範圍</th></tr></thead>
@@ -1039,7 +1024,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         </table>
       </div>
 
-      <h3>框架專項（Sonnet · 黃色）</h3>
+      <h3>框架專項（Sonnet）</h3>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Agent</th><th>專項範圍</th></tr></thead>
@@ -1053,7 +1038,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         </table>
       </div>
 
-      <h3>特殊領域（紫色）</h3>
+      <h3>特殊領域</h3>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Agent</th><th>專項範圍</th></tr></thead>
@@ -1158,9 +1143,9 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
       <div class="codeblock">
         <div class="codeblock-header">
           <div class="cb-dots">
-            <div class="cb-dot" style="background:#f87171"></div>
-            <div class="cb-dot" style="background:#fbbf24"></div>
-            <div class="cb-dot" style="background:#4ade80"></div>
+            <div class="cb-dot" style="background:#c0392b"></div>
+            <div class="cb-dot" style="background:#e67e22"></div>
+            <div class="cb-dot" style="background:#27ae60"></div>
           </div>
           agents/my-reviewer.md
         </div>
@@ -1189,11 +1174,11 @@ color: blue            <span class="c-comment"># green | red | blue | cyan | yel
 
 <footer>
   <span>MIT License · <a href="https://github.com/jurislm/code-review">jurislm/code-review</a></span>
-  <span>Built for <a href="https://claude.ai/code">Claude Code</a> · v1.0.0</span>
+  <span>Built for <a href="https://claude.ai/code">Claude Code</a> · v1.1.0</span>
 </footer>
 
 <script>
-  // Scroll progress bar
+  // Scroll progress
   const progress = document.getElementById('progress');
   window.addEventListener('scroll', () => {
     const max = document.documentElement.scrollHeight - window.innerHeight;
@@ -1203,34 +1188,27 @@ color: blue            <span class="c-comment"># green | red | blue | cyan | yel
   // Scroll spy
   const navLinks = document.querySelectorAll('.nav-link, .nav-sub-link');
   const targets  = document.querySelectorAll('section[id], h3[id]');
-
   const spy = new IntersectionObserver(entries => {
     entries.forEach(e => {
       if (!e.isIntersecting) return;
-      navLinks.forEach(a => {
-        a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id);
-      });
+      navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id));
     });
   }, { rootMargin: '-54px 0px -65% 0px', threshold: 0 });
-
   targets.forEach(el => spy.observe(el));
 
-  // Count-up animation
+  // Count-up
   document.querySelectorAll('[data-count]').forEach(el => {
     const target = +el.dataset.count;
-    const duration = 900;
     let started = false;
     const obs = new IntersectionObserver(entries => {
       if (!entries[0].isIntersecting || started) return;
-      started = true;
-      obs.disconnect();
-      const t0 = performance.now();
-      function tick(now) {
-        const p = Math.min((now - t0) / duration, 1);
-        const eased = 1 - Math.pow(1 - p, 3);
-        el.textContent = Math.round(eased * target);
+      started = true; obs.disconnect();
+      const t0 = performance.now(), dur = 900;
+      const tick = now => {
+        const p = Math.min((now - t0) / dur, 1);
+        el.textContent = Math.round((1 - Math.pow(1 - p, 3)) * target);
         if (p < 1) requestAnimationFrame(tick);
-      }
+      };
       requestAnimationFrame(tick);
     });
     obs.observe(el);
