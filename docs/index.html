@@ -7,35 +7,42 @@
   <meta name="description" content="24-agent code review ecosystem for Claude Code — complete technical reference for commands, agents, and skills." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Plus+Jakarta+Sans:ital,opsz,wght@0,8..18,300;0,8..18,400;0,8..18,500;0,8..18,600;1,8..18,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=Nunito:ital,wght@0,300;0,400;0,500;0,600;1,300&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:       #080b0f;
-      --bg2:      #0c1016;
-      --surface:  #101620;
-      --surface2: #151d29;
-      --border:   #1c2535;
-      --border2:  #253044;
-      --text:     #dde4ed;
-      --text2:    #9aaabb;
-      --muted:    #5a6a7e;
-      --accent:   #f07a64;
-      --blue:     #5b9cf6;
-      --green:    #3ec97a;
-      --yellow:   #e8b84a;
-      --purple:   #a485f5;
-      --red:      #f05050;
-      --cyan:     #2dd4e8;
+      --bg:        #09090b;
+      --bg2:       #0d0d10;
+      --surface:   #111116;
+      --surface2:  #17171e;
+      --border:    #1e1e27;
+      --border2:   #2b2b3a;
+      --text:      #f2f2f0;
+      --text2:     #9d9dac;
+      --muted:     #52526a;
 
-      --font-display: 'Syne', sans-serif;
-      --font-body:    'Plus Jakarta Sans', sans-serif;
+      --lime:      #a3e635;
+      --lime-dim:  #84cc16;
+      --lime-bg:   rgba(163,230,53,.07);
+      --lime-glow: rgba(163,230,53,.22);
+
+      --orange:    #fb923c;
+      --red:       #f87171;
+      --blue:      #60a5fa;
+      --cyan:      #22d3ee;
+      --purple:    #c084fc;
+      --yellow:    #fbbf24;
+      --green:     #4ade80;
+
+      --font-display: 'Bricolage Grotesque', sans-serif;
+      --font-body:    'Nunito', sans-serif;
       --font-mono:    'JetBrains Mono', monospace;
 
-      --sidebar-w: 248px;
-      --nav-h:     52px;
-      --radius:    .6rem;
+      --sidebar-w: 236px;
+      --nav-h:     54px;
+      --r:         8px;
+      --r-sm:      5px;
     }
 
     html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 2rem); }
@@ -46,33 +53,29 @@
       font-family: var(--font-body);
       font-size: 14.5px;
       line-height: 1.75;
-      /* Dot grid texture */
-      background-image: radial-gradient(circle, #1c2535 1px, transparent 1px);
-      background-size: 28px 28px;
-      background-attachment: fixed;
     }
 
-    /* Solid bg overlay so dots don't show through cards */
-    body::before {
+    /* Subtle noise overlay */
+    body::after {
       content: '';
       position: fixed;
       inset: 0;
-      background: linear-gradient(160deg, rgba(8,11,15,.97) 0%, rgba(8,11,15,.93) 100%);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='.035'/%3E%3C/svg%3E");
       pointer-events: none;
-      z-index: 0;
+      z-index: 9999;
     }
 
     a { color: var(--blue); text-decoration: none; transition: color .15s; }
-    a:hover { color: #89beff; text-decoration: none; }
+    a:hover { color: #93c5fd; }
 
     code {
       font-family: var(--font-mono);
-      font-size: .8em;
+      font-size: .79em;
       background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: .3rem;
-      padding: .12em .45em;
-      color: #c8d8f0;
+      border: 1px solid var(--border2);
+      border-radius: var(--r-sm);
+      padding: .1em .42em;
+      color: #bfd8ff;
     }
 
     /* ── Scroll progress ── */
@@ -81,8 +84,9 @@
       top: 0; left: 0;
       height: 2px;
       width: 0%;
-      background: linear-gradient(90deg, var(--accent), var(--blue));
-      z-index: 1000;
+      background: linear-gradient(90deg, var(--lime), var(--lime-dim));
+      z-index: 1001;
+      box-shadow: 0 0 10px var(--lime-glow);
       transition: width .1s linear;
     }
 
@@ -91,8 +95,8 @@
       position: fixed;
       top: 0; left: 0; right: 0;
       height: var(--nav-h);
-      background: rgba(8,11,15,.88);
-      backdrop-filter: blur(16px) saturate(180%);
+      background: rgba(9,9,11,.88);
+      backdrop-filter: blur(20px) saturate(160%);
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
@@ -104,42 +108,47 @@
     .topnav-brand {
       font-family: var(--font-display);
       font-weight: 700;
-      font-size: .95rem;
+      font-size: .92rem;
       display: flex;
       align-items: center;
-      gap: .6rem;
+      gap: .55rem;
       color: var(--text);
-      letter-spacing: -.01em;
+      letter-spacing: -.02em;
     }
 
-    .topnav-brand .logo {
-      width: 24px; height: 24px;
-      background: linear-gradient(135deg, var(--accent) 0%, #d45a3a 100%);
+    .brand-logo {
+      width: 26px; height: 26px;
+      background: var(--lime);
       border-radius: 6px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: .75rem;
-      box-shadow: 0 0 12px rgba(240,122,100,.35);
+      font-size: .65rem;
+      font-weight: 800;
+      color: #0a0a0c;
+      box-shadow: 0 0 16px rgba(163,230,53,.35);
+      flex-shrink: 0;
+      font-family: var(--font-display);
+      letter-spacing: -.02em;
     }
 
-    .topnav-brand .version {
+    .brand-version {
       font-family: var(--font-mono);
-      font-size: .68rem;
-      font-weight: 400;
+      font-size: .63rem;
       background: var(--surface);
       border: 1px solid var(--border2);
-      border-radius: 2rem;
-      padding: .12rem .55rem;
+      border-radius: 3rem;
+      padding: .1rem .5rem;
       color: var(--muted);
+      font-weight: 400;
     }
 
-    .topnav-links { display: flex; gap: .25rem; }
+    .topnav-links { display: flex; gap: .15rem; }
     .topnav-links a {
       color: var(--muted);
-      font-size: .82rem;
+      font-size: .8rem;
       padding: .3rem .65rem;
-      border-radius: .35rem;
+      border-radius: var(--r-sm);
       transition: color .15s, background .15s;
     }
     .topnav-links a:hover { color: var(--text); background: var(--surface); }
@@ -149,8 +158,6 @@
       display: flex;
       margin-top: var(--nav-h);
       min-height: calc(100vh - var(--nav-h));
-      position: relative;
-      z-index: 1;
     }
 
     /* ── Sidebar ── */
@@ -163,350 +170,434 @@
       overflow-y: auto;
       overflow-x: hidden;
       border-right: 1px solid var(--border);
-      padding: 1.75rem 0 2rem;
-      background: rgba(8,11,15,.6);
+      padding: 1.5rem 0 2.5rem;
+      background: rgba(9,9,11,.55);
+      animation: sideIn .4s cubic-bezier(.22,1,.36,1) both;
     }
-
-    .sidebar::-webkit-scrollbar { width: 3px; }
+    .sidebar::-webkit-scrollbar { width: 2px; }
     .sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
 
-    .nav-section { margin-bottom: 1.6rem; }
+    @keyframes sideIn {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: none; }
+    }
 
-    .nav-section-title {
+    .nav-group { margin-bottom: 1.75rem; }
+
+    .nav-group-label {
       font-family: var(--font-mono);
-      font-size: .62rem;
-      font-weight: 500;
+      font-size: .59rem;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: .1em;
+      letter-spacing: .12em;
       color: var(--muted);
-      padding: 0 1.25rem .5rem;
+      padding: 0 1.2rem .5rem;
       display: flex;
       align-items: center;
       gap: .5rem;
     }
-    .nav-section-title::after {
+    .nav-group-label::after {
       content: '';
       flex: 1;
       height: 1px;
       background: var(--border);
     }
 
-    .nav-item {
+    .nav-link {
       display: flex;
       align-items: center;
-      gap: .5rem;
-      padding: .28rem 1.25rem;
-      font-size: .825rem;
-      font-weight: 400;
-      color: var(--muted);
+      gap: .45rem;
+      padding: .3rem 1.2rem;
+      font-size: .8rem;
+      color: var(--text2);
       border-left: 2px solid transparent;
-      transition: color .12s, border-color .12s, background .12s;
-      cursor: pointer;
-      position: relative;
+      transition: all .15s;
     }
-    .nav-item::before {
-      content: '';
+    .nav-link .dot {
       width: 4px; height: 4px;
       border-radius: 50%;
       background: var(--border2);
       flex-shrink: 0;
-      transition: background .12s, transform .12s;
+      transition: all .15s;
     }
-    .nav-item:hover { color: var(--text2); text-decoration: none; }
-    .nav-item:hover::before { background: var(--muted); }
-    .nav-item.active {
-      color: var(--blue);
-      border-left-color: var(--blue);
-      background: linear-gradient(90deg, rgba(91,156,246,.08) 0%, transparent 100%);
+    .nav-link:hover { color: var(--text); text-decoration: none; }
+    .nav-link:hover .dot { background: var(--muted); }
+    .nav-link.active {
+      color: var(--lime);
+      border-left-color: var(--lime);
+      background: linear-gradient(90deg, var(--lime-bg), transparent);
     }
-    .nav-item.active::before { background: var(--blue); transform: scale(1.3); }
+    .nav-link.active .dot {
+      background: var(--lime);
+      box-shadow: 0 0 6px var(--lime-glow);
+      transform: scale(1.5);
+    }
 
-    .nav-sub {
+    .nav-sub-link {
       display: block;
-      padding: .22rem 1.25rem .22rem 2.6rem;
-      font-size: .78rem;
+      padding: .22rem 1.2rem .22rem 2.45rem;
+      font-size: .75rem;
       color: var(--muted);
-      transition: color .12s;
+      transition: color .15s;
       position: relative;
     }
-    .nav-sub::before {
-      content: '–';
+    .nav-sub-link::before {
+      content: '└';
       position: absolute;
-      left: 1.9rem;
+      left: 1.65rem;
       color: var(--border2);
+      font-size: .68rem;
     }
-    .nav-sub:hover { color: var(--text2); text-decoration: none; }
+    .nav-sub-link:hover { color: var(--text2); text-decoration: none; }
 
-    /* ── Main content ── */
+    /* ── Main ── */
     .main {
       flex: 1;
       min-width: 0;
-      padding: 3rem 3.5rem 5rem 3rem;
-      max-width: 820px;
+      padding: 3.5rem 4rem 6rem 3.5rem;
+      max-width: 860px;
+      animation: pageIn .45s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes pageIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: none; }
     }
 
-    /* Page load animation */
-    .main { animation: fadeUp .4s ease both; }
-    .sidebar { animation: fadeIn .35s ease both; }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to   { opacity: 1; }
-    }
+    .doc-section { margin-bottom: 4.5rem; }
 
-    /* ── Section ── */
-    .doc-section { margin-bottom: 4rem; }
-
+    /* ── Hero ── */
     h1 {
+      font-family: var(--font-display);
+      font-size: clamp(2.4rem, 5vw, 3.4rem);
+      font-weight: 800;
+      letter-spacing: -.045em;
+      line-height: 1.08;
+      margin-bottom: .65rem;
+      color: var(--text);
+    }
+    h1 em { font-style: normal; color: var(--lime); }
+
+    /* ── Stat strip ── */
+    .stat-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0;
+      margin: 1.5rem 0 2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+      position: relative;
+    }
+    .stat-strip::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: linear-gradient(180deg, var(--lime), var(--lime-dim));
+      box-shadow: 0 0 14px var(--lime-glow);
+    }
+    .stat-item {
+      display: flex;
+      flex-direction: column;
+      gap: .12rem;
+      padding: 1.25rem 1.5rem;
+      border-right: 1px solid var(--border);
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-num {
       font-family: var(--font-display);
       font-size: 2.1rem;
       font-weight: 800;
-      letter-spacing: -.03em;
-      line-height: 1.15;
-      margin-bottom: .5rem;
-      background: linear-gradient(135deg, var(--text) 30%, var(--text2) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      letter-spacing: -.05em;
+      color: var(--lime);
+      line-height: 1;
+    }
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: .59rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
     }
 
+    /* ── Typography ── */
     h2 {
       font-family: var(--font-display);
-      font-size: 1.25rem;
+      font-size: 1.2rem;
       font-weight: 700;
-      letter-spacing: -.02em;
-      margin-bottom: 1rem;
-      padding-top: .5rem;
-      padding-bottom: .65rem;
+      letter-spacing: -.025em;
+      margin-bottom: 1.2rem;
+      padding-bottom: .75rem;
       border-bottom: 1px solid var(--border);
       color: var(--text);
       display: flex;
       align-items: center;
-      gap: .6rem;
+      gap: .65rem;
     }
     h2::before {
       content: '';
-      display: inline-block;
       width: 3px; height: 1em;
-      background: linear-gradient(180deg, var(--accent), var(--blue));
+      background: linear-gradient(180deg, var(--lime), var(--lime-dim));
       border-radius: 2px;
       flex-shrink: 0;
+      box-shadow: 0 0 8px var(--lime-glow);
+    }
+    .h2-tag {
+      font-family: var(--font-mono);
+      font-size: .64rem;
+      color: var(--muted);
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: .3rem;
+      padding: .1rem .42rem;
+      margin-left: auto;
+      font-weight: 400;
     }
 
     h3 {
-      font-family: var(--font-display);
-      font-size: .9rem;
-      font-weight: 700;
-      letter-spacing: -.01em;
-      margin: 1.8rem 0 .65rem;
-      color: var(--text2);
+      font-family: var(--font-mono);
+      font-size: .62rem;
+      font-weight: 600;
       text-transform: uppercase;
-      font-size: .72rem;
-      letter-spacing: .08em;
+      letter-spacing: .1em;
+      color: var(--muted);
+      margin: 2rem 0 .8rem;
     }
 
-    p { margin-bottom: .85rem; color: var(--text2); font-weight: 300; }
-    ul, ol { padding-left: 1.4rem; margin-bottom: .85rem; color: var(--text2); font-weight: 300; }
-    li { margin-bottom: .3rem; }
+    p { margin-bottom: .9rem; color: var(--text2); line-height: 1.8; }
+    ul, ol { padding-left: 1.4rem; margin-bottom: .9rem; color: var(--text2); }
+    li { margin-bottom: .35rem; line-height: 1.7; }
     li strong { color: var(--text); font-weight: 600; }
 
     .lead {
-      font-size: 1rem;
+      font-size: .95rem;
       color: var(--text2);
-      font-weight: 300;
       line-height: 1.85;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1.75rem;
     }
 
     /* ── Badges ── */
-    .badges { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.75rem; }
+    .badges { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.5rem; }
     .badge {
       display: inline-flex;
       align-items: center;
-      gap: .35rem;
       font-family: var(--font-mono);
-      font-size: .68rem;
+      font-size: .63rem;
       font-weight: 500;
-      padding: .22rem .75rem;
+      padding: .2rem .65rem;
       border-radius: 2rem;
       border: 1px solid;
       letter-spacing: .02em;
     }
-    .badge-gray   { background: rgba(90,106,126,.08); border-color: var(--border2); color: var(--muted); }
-    .badge-blue   { background: rgba(91,156,246,.1);  border-color: rgba(91,156,246,.3);  color: var(--blue); }
-    .badge-green  { background: rgba(62,201,122,.1);  border-color: rgba(62,201,122,.3);  color: var(--green); }
-    .badge-yellow { background: rgba(232,184,74,.1);  border-color: rgba(232,184,74,.3);  color: var(--yellow); }
+    .badge-gray   { background: rgba(82,82,106,.1);   border-color: var(--border2);          color: var(--muted); }
+    .badge-lime   { background: rgba(163,230,53,.07); border-color: rgba(163,230,53,.28);    color: var(--lime); }
+    .badge-blue   { background: rgba(96,165,250,.07); border-color: rgba(96,165,250,.28);    color: var(--blue); }
+    .badge-purple { background: rgba(192,132,252,.07);border-color: rgba(192,132,252,.28);   color: var(--purple); }
 
     /* ── Callout ── */
     .callout {
       display: flex;
-      gap: .9rem;
+      gap: .85rem;
       border: 1px solid;
-      border-radius: var(--radius);
-      padding: .9rem 1rem;
-      margin: 1rem 0 1.4rem;
-      font-size: .855rem;
-      line-height: 1.65;
+      border-radius: var(--r);
+      padding: .9rem 1.1rem;
+      margin: 1.2rem 0 1.5rem;
+      font-size: .845rem;
+      line-height: 1.7;
     }
-    .callout-icon { font-size: 1rem; flex-shrink: 0; margin-top: .05rem; }
+    .callout-icon {
+      flex-shrink: 0;
+      width: 1.6rem; height: 1.6rem;
+      border-radius: .35rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: .82rem;
+      margin-top: .05rem;
+    }
     .callout-body { flex: 1; min-width: 0; }
-    .callout strong { display: block; margin-bottom: .2rem; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; }
-    .callout p { margin: 0; font-size: .855rem; }
+    .callout strong {
+      display: block;
+      margin-bottom: .25rem;
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .callout p { margin: 0; font-size: .845rem; }
 
-    .callout-tip  { border-color: rgba(62,201,122,.25);  background: rgba(62,201,122,.05);  }
-    .callout-note { border-color: rgba(91,156,246,.25);  background: rgba(91,156,246,.05);  }
-    .callout-warn { border-color: rgba(232,184,74,.25);  background: rgba(232,184,74,.05);  }
-    .callout-tip  strong { color: var(--green); }
-    .callout-note strong { color: var(--blue);  }
-    .callout-warn strong { color: var(--yellow);}
+    .callout-tip  { border-color: rgba(74,222,128,.2);  background: rgba(74,222,128,.04); }
+    .callout-note { border-color: rgba(96,165,250,.2);  background: rgba(96,165,250,.04); }
+    .callout-warn { border-color: rgba(251,191,36,.2);  background: rgba(251,191,36,.04); }
+    .callout-tip  .callout-icon { background: rgba(74,222,128,.1); color: #4ade80; }
+    .callout-note .callout-icon { background: rgba(96,165,250,.1); color: var(--blue); }
+    .callout-warn .callout-icon { background: rgba(251,191,36,.1); color: var(--yellow); }
+    .callout-tip  strong { color: #4ade80; }
+    .callout-note strong { color: var(--blue); }
+    .callout-warn strong { color: var(--yellow); }
 
     /* ── Code block ── */
     .codeblock {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: var(--r);
       overflow: hidden;
-      margin: .85rem 0 1.4rem;
-      position: relative;
+      margin: .95rem 0 1.5rem;
     }
     .codeblock-header {
-      padding: .55rem 1rem;
+      padding: .48rem .9rem;
       border-bottom: 1px solid var(--border);
-      background: var(--surface2);
+      background: var(--bg2);
       font-family: var(--font-mono);
-      font-size: .7rem;
+      font-size: .63rem;
       color: var(--muted);
       display: flex;
       align-items: center;
-      gap: .75rem;
+      gap: .6rem;
     }
-    .cb-dots { display: flex; gap: .35rem; }
-    .cb-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .cb-dots { display: flex; gap: .3rem; }
+    .cb-dot { width: 9px; height: 9px; border-radius: 50%; opacity: .75; }
     .codeblock pre {
-      padding: 1.1rem 1.2rem;
+      padding: 1rem 1.1rem;
       font-family: var(--font-mono);
-      font-size: .8rem;
+      font-size: .795rem;
       overflow-x: auto;
       line-height: 1.9;
     }
-    .codeblock pre code { background: none; border: none; padding: 0; font-size: inherit; color: var(--text2); }
-
+    .codeblock pre code {
+      background: none; border: none; padding: 0;
+      font-size: inherit; color: var(--text2);
+    }
     .c-comment { color: var(--muted); font-style: italic; }
-    .c-cmd     { color: var(--green); font-weight: 500; }
+    .c-cmd     { color: var(--lime); font-weight: 600; }
     .c-arg     { color: var(--blue); }
     .c-flag    { color: var(--yellow); }
-    .c-str     { color: #a5d6ff; }
+    .c-str     { color: #93c5fd; }
 
     /* ── Table ── */
-    .table-wrap { overflow-x: auto; margin: .85rem 0 1.5rem; border: 1px solid var(--border); border-radius: var(--radius); }
-    table { width: 100%; border-collapse: collapse; font-size: .845rem; }
+    .table-wrap {
+      overflow-x: auto;
+      margin: .9rem 0 1.5rem;
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: .84rem; }
     th {
       text-align: left;
       padding: .6rem 1rem;
       font-family: var(--font-mono);
-      font-size: .65rem;
-      font-weight: 500;
+      font-size: .61rem;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: .08em;
+      letter-spacing: .09em;
       color: var(--muted);
       background: var(--surface2);
       border-bottom: 1px solid var(--border);
     }
     td {
-      padding: .6rem 1rem;
+      padding: .65rem 1rem;
       border-bottom: 1px solid var(--border);
       vertical-align: top;
       color: var(--text2);
-      font-weight: 300;
+      line-height: 1.65;
     }
     tr:last-child td { border-bottom: none; }
-    tbody tr { transition: background .12s; }
-    tbody tr:hover td { background: rgba(255,255,255,.02); }
-    td code { font-size: .78em; }
+    tbody tr { transition: background .1s; }
+    tbody tr:hover td { background: rgba(255,255,255,.018); }
+    td code { font-size: .76em; }
 
     /* ── Agent card ── */
     .agent-card {
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1rem 1.1rem 1rem 1.25rem;
-      margin-bottom: .65rem;
+      border-radius: var(--r);
+      padding: 1.1rem 1.2rem 1rem 1.3rem;
+      margin-bottom: .55rem;
       display: flex;
       gap: 1rem;
       align-items: flex-start;
-      transition: border-color .2s, background .2s, box-shadow .2s;
       background: var(--surface);
       position: relative;
       overflow: hidden;
+      transition: border-color .2s, box-shadow .2s, background .2s;
     }
     .agent-card::before {
       content: '';
       position: absolute;
       left: 0; top: 0; bottom: 0;
       width: 3px;
-      border-radius: 0 2px 2px 0;
       background: var(--agent-color, var(--border2));
       transition: width .2s, box-shadow .2s;
     }
     .agent-card:hover {
       border-color: var(--agent-color, var(--border2));
       background: var(--surface2);
-      box-shadow: 0 0 0 1px var(--agent-color, transparent), inset 0 0 30px rgba(0,0,0,.2);
+      box-shadow: 0 4px 24px rgba(0,0,0,.28);
     }
     .agent-card:hover::before {
       width: 4px;
-      box-shadow: 0 0 10px var(--agent-color, transparent);
+      box-shadow: 0 0 12px var(--agent-color, transparent);
     }
-
     .agent-dot {
-      width: 9px; height: 9px;
+      width: 8px; height: 8px;
       border-radius: 50%;
-      margin-top: .55rem;
+      margin-top: .5rem;
       flex-shrink: 0;
-      box-shadow: 0 0 6px currentColor;
+      box-shadow: 0 0 8px currentColor;
     }
+    .agent-body { flex: 1; min-width: 0; }
     .agent-name {
       font-family: var(--font-mono);
-      font-weight: 500;
-      font-size: .86rem;
+      font-weight: 600;
+      font-size: .855rem;
       color: var(--text);
       letter-spacing: -.01em;
     }
-    .agent-desc { font-size: .815rem; color: var(--text2); margin-top: .25rem; line-height: 1.6; font-weight: 300; }
-    .agent-meta { display: flex; gap: .4rem; margin-top: .55rem; flex-wrap: wrap; }
-    .agent-pill {
+    .agent-desc {
+      font-size: .82rem;
+      color: var(--text2);
+      margin-top: .3rem;
+      line-height: 1.65;
+    }
+    .agent-pills { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .6rem; }
+    .pill {
       font-family: var(--font-mono);
-      font-size: .65rem;
-      padding: .1rem .5rem;
-      border-radius: 2rem;
+      font-size: .61rem;
+      padding: .1rem .48rem;
+      border-radius: 3rem;
       border: 1px solid var(--border2);
       color: var(--muted);
       background: var(--bg2);
+      letter-spacing: .01em;
+    }
+    .pill-model {
+      border-color: rgba(163,230,53,.22);
+      color: var(--lime);
+      background: rgba(163,230,53,.05);
     }
 
-    /* ── Severity pills ── */
+    /* ── Severity ── */
     .sev {
       display: inline-block;
       font-family: var(--font-mono);
-      font-size: .67rem;
-      font-weight: 500;
+      font-size: .63rem;
+      font-weight: 600;
       padding: .12rem .55rem;
-      border-radius: .3rem;
-      letter-spacing: .04em;
+      border-radius: .35rem;
+      letter-spacing: .05em;
     }
-    .sev-critical { background: rgba(240,80,80,.12); color: var(--red);    border: 1px solid rgba(240,80,80,.25); }
-    .sev-high     { background: rgba(232,184,74,.12); color: var(--yellow); border: 1px solid rgba(232,184,74,.25); }
-    .sev-medium   { background: rgba(91,156,246,.1);  color: var(--blue);   border: 1px solid rgba(91,156,246,.25); }
-    .sev-low      { background: rgba(90,106,126,.1);  color: var(--muted);  border: 1px solid var(--border2); }
+    .sev-critical { background: rgba(248,113,113,.1); color: var(--red);    border: 1px solid rgba(248,113,113,.25); }
+    .sev-high     { background: rgba(251,146,60,.1);  color: var(--orange); border: 1px solid rgba(251,146,60,.25); }
+    .sev-medium   { background: rgba(96,165,250,.08); color: var(--blue);   border: 1px solid rgba(96,165,250,.2); }
+    .sev-low      { background: rgba(82,82,106,.1);   color: var(--muted);  border: 1px solid var(--border2); }
 
     /* ── Decision table ── */
-    .decision td:first-child { font-family: var(--font-mono); font-weight: 500; font-size: .82rem; }
+    .decision td:first-child { font-family: var(--font-mono); font-weight: 600; font-size: .82rem; }
     .t-block   { color: var(--red); }
-    .t-changes { color: var(--yellow); }
+    .t-changes { color: var(--orange); }
     .t-approvec{ color: var(--blue); }
-    .t-approve { color: var(--green); }
+    .t-approve { color: var(--lime); }
 
     /* ── Divider ── */
     .divider {
@@ -517,11 +608,9 @@
 
     /* ── Footer ── */
     footer {
-      position: relative;
-      z-index: 1;
       border-top: 1px solid var(--border);
-      padding: 1.75rem 3rem;
-      font-size: .8rem;
+      padding: 1.75rem 3.5rem;
+      font-size: .77rem;
       color: var(--muted);
       display: flex;
       justify-content: space-between;
@@ -529,15 +618,17 @@
       flex-wrap: wrap;
       gap: .5rem;
       font-family: var(--font-mono);
-      background: rgba(8,11,15,.8);
+      background: rgba(9,9,11,.7);
     }
     footer a { color: var(--muted); transition: color .15s; }
-    footer a:hover { color: var(--text2); }
+    footer a:hover { color: var(--lime); text-decoration: none; }
 
     @media (max-width: 768px) {
       .sidebar { display: none; }
-      .main { padding: 1.75rem 1.25rem 3rem; }
-      footer { padding: 1.25rem; flex-direction: column; gap: .3rem; }
+      .main { padding: 2rem 1.25rem 4rem; }
+      footer { padding: 1.25rem; flex-direction: column; gap: .3rem; text-align: center; }
+      .stat-item { padding: 1rem 1.1rem; }
+      .stat-num { font-size: 1.6rem; }
     }
   </style>
 </head>
@@ -548,9 +639,9 @@
 <!-- Top nav -->
 <nav class="topnav">
   <div class="topnav-brand">
-    <div class="logo">⬡</div>
+    <div class="brand-logo">CR</div>
     code-review
-    <span class="version">v1.0.0</span>
+    <span class="brand-version">v1.0.0</span>
   </div>
   <div class="topnav-links">
     <a href="https://github.com/jurislm/code-review">GitHub</a>
@@ -563,36 +654,36 @@
 
   <!-- Sidebar -->
   <aside class="sidebar">
-    <div class="nav-section">
-      <div class="nav-section-title">Getting Started</div>
-      <a class="nav-item" href="#overview">Overview</a>
-      <a class="nav-item" href="#installation">Installation</a>
+    <div class="nav-group">
+      <div class="nav-group-label">Getting Started</div>
+      <a class="nav-link" href="#overview"><span class="dot"></span>Overview</a>
+      <a class="nav-link" href="#installation"><span class="dot"></span>Installation</a>
     </div>
-    <div class="nav-section">
-      <div class="nav-section-title">Commands</div>
-      <a class="nav-item" href="#commands">/code-review</a>
-      <a class="nav-sub" href="#cmd-local">Local mode</a>
-      <a class="nav-sub" href="#cmd-pr">PR mode</a>
-      <a class="nav-sub" href="#cmd-bitbucket">Bitbucket</a>
-      <a class="nav-item" href="#cmd-review-pr">/review-pr</a>
-      <a class="nav-item" href="#cmd-lang">Language commands</a>
+    <div class="nav-group">
+      <div class="nav-group-label">Commands</div>
+      <a class="nav-link" href="#commands"><span class="dot"></span>/code-review</a>
+      <a class="nav-sub-link" href="#cmd-local">Local mode</a>
+      <a class="nav-sub-link" href="#cmd-pr">PR mode</a>
+      <a class="nav-sub-link" href="#cmd-bitbucket">Bitbucket</a>
+      <a class="nav-link" href="#cmd-review-pr"><span class="dot"></span>/review-pr</a>
+      <a class="nav-link" href="#cmd-lang"><span class="dot"></span>Language commands</a>
     </div>
-    <div class="nav-section">
-      <div class="nav-section-title">Agents</div>
-      <a class="nav-item" href="#agents-general">通用主審</a>
-      <a class="nav-item" href="#agents-pr">PR 協作</a>
-      <a class="nav-item" href="#agents-lang">語言 / 框架</a>
+    <div class="nav-group">
+      <div class="nav-group-label">Agents</div>
+      <a class="nav-link" href="#agents-general"><span class="dot"></span>通用主審</a>
+      <a class="nav-link" href="#agents-pr"><span class="dot"></span>PR 協作</a>
+      <a class="nav-link" href="#agents-lang"><span class="dot"></span>語言 / 框架</a>
     </div>
-    <div class="nav-section">
-      <div class="nav-section-title">Skills</div>
-      <a class="nav-item" href="#skills">Auto-trigger Skills</a>
+    <div class="nav-group">
+      <div class="nav-group-label">Skills</div>
+      <a class="nav-link" href="#skills"><span class="dot"></span>Auto-trigger Skills</a>
     </div>
-    <div class="nav-section">
-      <div class="nav-section-title">Reference</div>
-      <a class="nav-item" href="#severity">Severity Levels</a>
-      <a class="nav-item" href="#decision">Decision Logic</a>
-      <a class="nav-item" href="#principles">Design Principles</a>
-      <a class="nav-item" href="#contributing">Contributing</a>
+    <div class="nav-group">
+      <div class="nav-group-label">Reference</div>
+      <a class="nav-link" href="#severity"><span class="dot"></span>Severity Levels</a>
+      <a class="nav-link" href="#decision"><span class="dot"></span>Decision Logic</a>
+      <a class="nav-link" href="#principles"><span class="dot"></span>Design Principles</a>
+      <a class="nav-link" href="#contributing"><span class="dot"></span>Contributing</a>
     </div>
   </aside>
 
@@ -601,14 +692,39 @@
 
     <!-- Overview -->
     <section class="doc-section" id="overview">
-      <h1>Code Review Plugin</h1>
+      <h1>Code Review<br><em>Plugin</em></h1>
+
       <div class="badges">
         <span class="badge badge-gray">MIT License</span>
-        <span class="badge badge-blue">24 Agents</span>
-        <span class="badge badge-green">9 Commands</span>
-        <span class="badge badge-yellow">3 Skills</span>
+        <span class="badge badge-lime">24 Agents</span>
+        <span class="badge badge-blue">9 Commands</span>
+        <span class="badge badge-purple">3 Skills</span>
         <span class="badge badge-gray">Claude Code Plugin</span>
       </div>
+
+      <div class="stat-strip">
+        <div class="stat-item">
+          <div class="stat-num" data-count="24">24</div>
+          <div class="stat-label">Reviewer Agents</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" data-count="9">9</div>
+          <div class="stat-label">Slash Commands</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" data-count="3">3</div>
+          <div class="stat-label">Auto Skills</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">80%+</div>
+          <div class="stat-label">Confidence Gate</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num" data-count="6">6</div>
+          <div class="stat-label">Parallel PR Agents</div>
+        </div>
+      </div>
+
       <p class="lead">
         完整 code review 生態系統，以 Claude Code plugin 形式發布。提供 24 個語言 / 框架專項 reviewer agent、9 個 slash command、以及 3 個自動觸發的安全 review skill。
       </p>
@@ -632,7 +748,7 @@
 
     <!-- Installation -->
     <section class="doc-section" id="installation">
-      <h2>Installation</h2>
+      <h2>Installation <span class="h2-tag">setup</span></h2>
 
       <h3>Plugin 安裝（推薦）</h3>
       <p>在 Claude Code 中執行 <code>/plugin</code>，搜尋 <code>jurislm/code-review</code>，點擊安裝後執行 <code>/reload-plugins</code> 套用。安裝後無需額外設定即可使用所有功能。</p>
@@ -641,9 +757,9 @@
       <div class="codeblock">
         <div class="codeblock-header">
           <div class="cb-dots">
-            <div class="cb-dot" style="background:#f05050"></div>
-            <div class="cb-dot" style="background:#e8b84a"></div>
-            <div class="cb-dot" style="background:#3ec97a"></div>
+            <div class="cb-dot" style="background:#f87171"></div>
+            <div class="cb-dot" style="background:#fbbf24"></div>
+            <div class="cb-dot" style="background:#4ade80"></div>
           </div>
           bash
         </div>
@@ -661,9 +777,9 @@ cp -r skills/* ~/.claude/skills/</code></pre>
       <div class="codeblock">
         <div class="codeblock-header">
           <div class="cb-dots">
-            <div class="cb-dot" style="background:#f05050"></div>
-            <div class="cb-dot" style="background:#e8b84a"></div>
-            <div class="cb-dot" style="background:#3ec97a"></div>
+            <div class="cb-dot" style="background:#f87171"></div>
+            <div class="cb-dot" style="background:#fbbf24"></div>
+            <div class="cb-dot" style="background:#4ade80"></div>
           </div>
           ~/.zshenv
         </div>
@@ -682,18 +798,32 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
 
     <!-- /code-review -->
     <section class="doc-section" id="commands">
-      <h2>/code-review</h2>
+      <h2>/code-review <span class="h2-tag">command</span></h2>
       <p>本地 uncommitted 變更 review 或 GitHub / Bitbucket PR review，自動偵測模式。</p>
 
       <div class="codeblock">
-        <div class="codeblock-header"><div class="cb-dots"><div class="cb-dot" style="background:#f05050"></div><div class="cb-dot" style="background:#e8b84a"></div><div class="cb-dot" style="background:#3ec97a"></div></div>syntax</div>
+        <div class="codeblock-header">
+          <div class="cb-dots">
+            <div class="cb-dot" style="background:#f87171"></div>
+            <div class="cb-dot" style="background:#fbbf24"></div>
+            <div class="cb-dot" style="background:#4ade80"></div>
+          </div>
+          syntax
+        </div>
         <pre><code>/code-review [pr-number | pr-url | blank]</code></pre>
       </div>
 
       <h3 id="cmd-local">Local Review Mode</h3>
       <p>不傳參數時進入本地模式，對目前 uncommitted 變更進行審查。</p>
       <div class="codeblock">
-        <div class="codeblock-header"><div class="cb-dots"><div class="cb-dot" style="background:#f05050"></div><div class="cb-dot" style="background:#e8b84a"></div><div class="cb-dot" style="background:#3ec97a"></div></div>example</div>
+        <div class="codeblock-header">
+          <div class="cb-dots">
+            <div class="cb-dot" style="background:#f87171"></div>
+            <div class="cb-dot" style="background:#fbbf24"></div>
+            <div class="cb-dot" style="background:#4ade80"></div>
+          </div>
+          example
+        </div>
         <pre><code><span class="c-cmd">/code-review</span></code></pre>
       </div>
       <p>執行流程：</p>
@@ -706,7 +836,14 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
       <h3 id="cmd-pr">GitHub PR Review Mode</h3>
       <p>傳入 PR 號碼或 GitHub URL，需本機安裝 <code>gh</code> CLI 並已登入。</p>
       <div class="codeblock">
-        <div class="codeblock-header"><div class="cb-dots"><div class="cb-dot" style="background:#f05050"></div><div class="cb-dot" style="background:#e8b84a"></div><div class="cb-dot" style="background:#3ec97a"></div></div>example</div>
+        <div class="codeblock-header">
+          <div class="cb-dots">
+            <div class="cb-dot" style="background:#f87171"></div>
+            <div class="cb-dot" style="background:#fbbf24"></div>
+            <div class="cb-dot" style="background:#4ade80"></div>
+          </div>
+          example
+        </div>
         <pre><code><span class="c-cmd">/code-review</span> <span class="c-arg">123</span>
 <span class="c-cmd">/code-review</span> <span class="c-arg">https://github.com/owner/repo/pull/123</span></code></pre>
       </div>
@@ -715,7 +852,14 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
       <h3 id="cmd-bitbucket">Bitbucket Cloud PR Review Mode</h3>
       <p>URL 含 <code>bitbucket.org</code> 或 remote origin 指向 Bitbucket 時自動切換，使用 REST API（需 <code>BB_USERNAME</code>、<code>BB_APP_PASSWORD</code>）。</p>
       <div class="codeblock">
-        <div class="codeblock-header"><div class="cb-dots"><div class="cb-dot" style="background:#f05050"></div><div class="cb-dot" style="background:#e8b84a"></div><div class="cb-dot" style="background:#3ec97a"></div></div>example</div>
+        <div class="codeblock-header">
+          <div class="cb-dots">
+            <div class="cb-dot" style="background:#f87171"></div>
+            <div class="cb-dot" style="background:#fbbf24"></div>
+            <div class="cb-dot" style="background:#4ade80"></div>
+          </div>
+          example
+        </div>
         <pre><code><span class="c-cmd">/code-review</span> <span class="c-arg">123</span>
 <span class="c-cmd">/code-review</span> <span class="c-arg">https://bitbucket.org/workspace/repo/pull-requests/123</span></code></pre>
       </div>
@@ -723,16 +867,30 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
 
     <!-- /review-pr -->
     <section class="doc-section" id="cmd-review-pr">
-      <h2>/review-pr</h2>
+      <h2>/review-pr <span class="h2-tag">command</span></h2>
       <p>同時啟動 6 個專項 agent 對同一 PR 進行並行審查，再彙整去重並排序 finding。confidence &lt; 80% 自動過濾。</p>
 
       <div class="codeblock">
-        <div class="codeblock-header"><div class="cb-dots"><div class="cb-dot" style="background:#f05050"></div><div class="cb-dot" style="background:#e8b84a"></div><div class="cb-dot" style="background:#3ec97a"></div></div>syntax</div>
+        <div class="codeblock-header">
+          <div class="cb-dots">
+            <div class="cb-dot" style="background:#f87171"></div>
+            <div class="cb-dot" style="background:#fbbf24"></div>
+            <div class="cb-dot" style="background:#4ade80"></div>
+          </div>
+          syntax
+        </div>
         <pre><code>/review-pr [pr-number | pr-url] [--focus &lt;area&gt;]</code></pre>
       </div>
 
       <div class="codeblock">
-        <div class="codeblock-header"><div class="cb-dots"><div class="cb-dot" style="background:#f05050"></div><div class="cb-dot" style="background:#e8b84a"></div><div class="cb-dot" style="background:#3ec97a"></div></div>examples</div>
+        <div class="codeblock-header">
+          <div class="cb-dots">
+            <div class="cb-dot" style="background:#f87171"></div>
+            <div class="cb-dot" style="background:#fbbf24"></div>
+            <div class="cb-dot" style="background:#4ade80"></div>
+          </div>
+          examples
+        </div>
         <pre><code><span class="c-cmd">/review-pr</span> <span class="c-arg">123</span>
 <span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus security</span>
 <span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus performance</span>
@@ -758,7 +916,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
 
     <!-- Language commands -->
     <section class="doc-section" id="cmd-lang">
-      <h2>Language Commands</h2>
+      <h2>Language Commands <span class="h2-tag">commands</span></h2>
       <p>語言專項 command，不傳參數則預設審查 staged changes；可傳入目錄或檔案路徑作為參數。</p>
       <div class="table-wrap">
         <table>
@@ -778,30 +936,30 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
 
     <!-- Agents — General -->
     <section class="doc-section" id="agents-general">
-      <h2>Agents — 通用主審</h2>
+      <h2>Agents — 通用主審 <span class="h2-tag">agents</span></h2>
 
-      <div class="agent-card" style="--agent-color: #3ec97a">
-        <div class="agent-dot" style="color:#3ec97a; background:#3ec97a"></div>
-        <div>
+      <div class="agent-card" style="--agent-color: #4ade80">
+        <div class="agent-dot" style="color:#4ade80; background:#4ade80"></div>
+        <div class="agent-body">
           <div class="agent-name">code-reviewer</div>
           <div class="agent-desc">主審 agent，負責整體程式碼品質、安全性、可維護性。包含嚴格的 false positive 過濾機制，針對 React / Node.js 有專項規則。修改任何程式碼後應立即使用。</div>
-          <div class="agent-meta">
-            <span class="agent-pill">Model: Sonnet</span>
-            <span class="agent-pill">Tools: Read · Grep · Glob · Bash</span>
-            <span class="agent-pill">觸發：所有程式碼變更後</span>
+          <div class="agent-pills">
+            <span class="pill pill-model">Sonnet</span>
+            <span class="pill">Read · Grep · Glob · Bash</span>
+            <span class="pill">觸發：所有程式碼變更後</span>
           </div>
         </div>
       </div>
 
-      <div class="agent-card" style="--agent-color: #f05050">
-        <div class="agent-dot" style="color:#f05050; background:#f05050"></div>
-        <div>
+      <div class="agent-card" style="--agent-color: #f87171">
+        <div class="agent-dot" style="color:#f87171; background:#f87171"></div>
+        <div class="agent-body">
           <div class="agent-name">security-reviewer</div>
           <div class="agent-desc">安全漏洞偵測與修補專家。掃描 OWASP Top 10、hardcoded secrets、SSRF、injection、unsafe crypto。遇到 CRITICAL finding 發出緊急警報，可執行 <code>npm audit</code> 與 ESLint security plugin。</div>
-          <div class="agent-meta">
-            <span class="agent-pill">Model: Sonnet</span>
-            <span class="agent-pill">Tools: Read · Write · Edit · Bash · Grep · Glob</span>
-            <span class="agent-pill">觸發：auth · API endpoint · user input · secrets</span>
+          <div class="agent-pills">
+            <span class="pill pill-model">Sonnet</span>
+            <span class="pill">Read · Write · Edit · Bash · Grep · Glob</span>
+            <span class="pill">觸發：auth · API endpoint · user input · secrets</span>
           </div>
         </div>
       </div>
@@ -809,58 +967,58 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
 
     <!-- Agents — PR -->
     <section class="doc-section" id="agents-pr">
-      <h2>Agents — PR 協作</h2>
+      <h2>Agents — PR 協作 <span class="h2-tag">agents</span></h2>
       <p>以下 agent 由 <code>/review-pr</code> 並行調用，也可在對話中單獨使用。</p>
 
-      <div class="agent-card" style="--agent-color: #2dd4e8">
-        <div class="agent-dot" style="color:#2dd4e8; background:#2dd4e8"></div>
-        <div>
+      <div class="agent-card" style="--agent-color: #22d3ee">
+        <div class="agent-dot" style="color:#22d3ee; background:#22d3ee"></div>
+        <div class="agent-body">
           <div class="agent-name">comment-analyzer</div>
           <div class="agent-desc">分析程式碼行內 comment 的準確性、完整性、可維護性，以及 comment rot 風險（comment 與實際行為脫節）。</div>
-          <div class="agent-meta"><span class="agent-pill">Model: Sonnet</span><span class="agent-pill">Tools: Read · Grep · Glob</span></div>
+          <div class="agent-pills"><span class="pill pill-model">Sonnet</span><span class="pill">Read · Grep · Glob</span></div>
         </div>
       </div>
 
-      <div class="agent-card" style="--agent-color: #2dd4e8">
-        <div class="agent-dot" style="color:#2dd4e8; background:#2dd4e8"></div>
-        <div>
+      <div class="agent-card" style="--agent-color: #22d3ee">
+        <div class="agent-dot" style="color:#22d3ee; background:#22d3ee"></div>
+        <div class="agent-body">
           <div class="agent-name">pr-test-analyzer</div>
           <div class="agent-desc">審查 PR 測試覆蓋品質與完整性，重點在行為涵蓋（behavioral coverage）與真實 bug 防護，而非表層語法檢查。</div>
-          <div class="agent-meta"><span class="agent-pill">Model: Sonnet</span><span class="agent-pill">Tools: Read · Grep · Glob · Bash</span></div>
+          <div class="agent-pills"><span class="pill pill-model">Sonnet</span><span class="pill">Read · Grep · Glob · Bash</span></div>
         </div>
       </div>
 
-      <div class="agent-card" style="--agent-color: #2dd4e8">
-        <div class="agent-dot" style="color:#2dd4e8; background:#2dd4e8"></div>
-        <div>
+      <div class="agent-card" style="--agent-color: #22d3ee">
+        <div class="agent-dot" style="color:#22d3ee; background:#22d3ee"></div>
+        <div class="agent-body">
           <div class="agent-name">silent-failure-hunter</div>
           <div class="agent-desc">專門偵測 swallowed error、ignored promise、bad fallback、缺失的錯誤傳遞——這類問題不會讓程式崩潰，但會讓 bug 靜默擴散。</div>
-          <div class="agent-meta"><span class="agent-pill">Model: Sonnet</span><span class="agent-pill">Tools: Read · Grep · Glob · Bash</span></div>
+          <div class="agent-pills"><span class="pill pill-model">Sonnet</span><span class="pill">Read · Grep · Glob · Bash</span></div>
         </div>
       </div>
 
-      <div class="agent-card" style="--agent-color: #2dd4e8">
-        <div class="agent-dot" style="color:#2dd4e8; background:#2dd4e8"></div>
-        <div>
+      <div class="agent-card" style="--agent-color: #22d3ee">
+        <div class="agent-dot" style="color:#22d3ee; background:#22d3ee"></div>
+        <div class="agent-body">
           <div class="agent-name">type-design-analyzer</div>
           <div class="agent-desc">分析型別設計的封裝性、invariant 表達、有效性與強制性。找出過度鬆散的 type（如裸 <code>string</code> 代表有語義的值）或未充分利用型別系統的模式。</div>
-          <div class="agent-meta"><span class="agent-pill">Model: Sonnet</span><span class="agent-pill">Tools: Read · Grep · Glob</span></div>
+          <div class="agent-pills"><span class="pill pill-model">Sonnet</span><span class="pill">Read · Grep · Glob</span></div>
         </div>
       </div>
 
-      <div class="agent-card" style="--agent-color: #2dd4e8">
-        <div class="agent-dot" style="color:#2dd4e8; background:#2dd4e8"></div>
-        <div>
+      <div class="agent-card" style="--agent-color: #22d3ee">
+        <div class="agent-dot" style="color:#22d3ee; background:#22d3ee"></div>
+        <div class="agent-body">
           <div class="agent-name">code-simplifier</div>
           <div class="agent-desc">找出過度複雜的實作，提出簡化方案。在保留行為的前提下，改善清晰度、一致性與可維護性，不引入不必要的抽象。</div>
-          <div class="agent-meta"><span class="agent-pill">Model: Sonnet</span><span class="agent-pill">Tools: Read · Write · Edit · Bash · Grep · Glob</span></div>
+          <div class="agent-pills"><span class="pill pill-model">Sonnet</span><span class="pill">Read · Write · Edit · Bash · Grep · Glob</span></div>
         </div>
       </div>
     </section>
 
     <!-- Agents — Language -->
     <section class="doc-section" id="agents-lang">
-      <h2>Agents — 語言 / 框架專項</h2>
+      <h2>Agents — 語言 / 框架專項 <span class="h2-tag">agents</span></h2>
 
       <h3>通用語言（Sonnet · 藍色）</h3>
       <div class="table-wrap">
@@ -895,13 +1053,13 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         </table>
       </div>
 
-      <h3>特殊領域（Opus · 紫色）</h3>
+      <h3>特殊領域（紫色）</h3>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Agent</th><th>專項範圍</th></tr></thead>
           <tbody>
             <tr><td><code>healthcare-reviewer</code></td><td>臨床安全、CDSS 準確性、PHI 合規（HIPAA）、醫療資料完整性。適用 EMR/EHR、臨床決策支援、健康資訊系統。使用 Opus 模型。</td></tr>
-            <tr><td><code>mle-reviewer</code></td><td>data contracts、feature pipelines、training reproducibility、offline/online evaluation、model serving、monitoring、rollback。適用 ML / MLOps / 模型訓練 / 推論 / feature store。使用 Opus 模型。</td></tr>
+            <tr><td><code>mle-reviewer</code></td><td>data contracts、feature pipelines、training reproducibility、offline/online evaluation、model serving、monitoring、rollback。適用 ML / MLOps / 模型訓練 / 推論 / feature store。</td></tr>
           </tbody>
         </table>
       </div>
@@ -909,7 +1067,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
 
     <!-- Skills -->
     <section class="doc-section" id="skills">
-      <h2>Auto-trigger Skills</h2>
+      <h2>Auto-trigger Skills <span class="h2-tag">skills</span></h2>
       <p>Skills 根據任務上下文自動啟動，無需手動呼叫。以下說明各 skill 的觸發條件與功能。</p>
 
       <h3>security-review</h3>
@@ -926,7 +1084,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
 
     <!-- Severity -->
     <section class="doc-section" id="severity">
-      <h2>Severity Levels</h2>
+      <h2>Severity Levels <span class="h2-tag">reference</span></h2>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Level</th><th>定義</th><th>處理方式</th></tr></thead>
@@ -950,7 +1108,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
 
     <!-- Decision -->
     <section class="doc-section" id="decision">
-      <h2>Decision Logic</h2>
+      <h2>Decision Logic <span class="h2-tag">reference</span></h2>
       <p>PR review 完成後，依據 finding 嚴重程度自動產生決策：</p>
       <div class="table-wrap">
         <table class="decision">
@@ -967,7 +1125,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
 
     <!-- Principles -->
     <section class="doc-section" id="principles">
-      <h2>Design Principles</h2>
+      <h2>Design Principles <span class="h2-tag">reference</span></h2>
       <ol>
         <li><strong>高信心原則</strong> — 只報告 confidence &gt; 80% 的問題。不確定的 finding 寧可略過，不製造雜訊。</li>
         <li><strong>讀全文</strong> — PR review 讀每個變更檔案的全文，而非只看 diff 行。context 是判斷問題的關鍵。</li>
@@ -979,7 +1137,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
 
     <!-- Contributing -->
     <section class="doc-section" id="contributing">
-      <h2>Contributing</h2>
+      <h2>Contributing <span class="h2-tag">guide</span></h2>
 
       <h3>新增 Agent</h3>
       <ol>
@@ -998,7 +1156,14 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
 
       <h3>Agent Frontmatter 格式</h3>
       <div class="codeblock">
-        <div class="codeblock-header"><div class="cb-dots"><div class="cb-dot" style="background:#f05050"></div><div class="cb-dot" style="background:#e8b84a"></div><div class="cb-dot" style="background:#3ec97a"></div></div>agents/my-reviewer.md</div>
+        <div class="codeblock-header">
+          <div class="cb-dots">
+            <div class="cb-dot" style="background:#f87171"></div>
+            <div class="cb-dot" style="background:#fbbf24"></div>
+            <div class="cb-dot" style="background:#4ade80"></div>
+          </div>
+          agents/my-reviewer.md
+        </div>
         <pre><code>---
 name: my-reviewer
 description: &lt;一句話說明觸發時機，Claude 靠這段決定何時使用&gt;
@@ -1035,21 +1200,41 @@ color: blue            <span class="c-comment"># green | red | blue | cyan | yel
     progress.style.width = (window.scrollY / max * 100) + '%';
   }, { passive: true });
 
-  // Scroll-spy
-  const navLinks = document.querySelectorAll('.nav-item, .nav-sub');
+  // Scroll spy
+  const navLinks = document.querySelectorAll('.nav-link, .nav-sub-link');
   const targets  = document.querySelectorAll('section[id], h3[id]');
 
   const spy = new IntersectionObserver(entries => {
     entries.forEach(e => {
       if (!e.isIntersecting) return;
       navLinks.forEach(a => {
-        const match = a.getAttribute('href') === '#' + e.target.id;
-        a.classList.toggle('active', match);
+        a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id);
       });
     });
-  }, { rootMargin: '-52px 0px -65% 0px', threshold: 0 });
+  }, { rootMargin: '-54px 0px -65% 0px', threshold: 0 });
 
   targets.forEach(el => spy.observe(el));
+
+  // Count-up animation
+  document.querySelectorAll('[data-count]').forEach(el => {
+    const target = +el.dataset.count;
+    const duration = 900;
+    let started = false;
+    const obs = new IntersectionObserver(entries => {
+      if (!entries[0].isIntersecting || started) return;
+      started = true;
+      obs.disconnect();
+      const t0 = performance.now();
+      function tick(now) {
+        const p = Math.min((now - t0) / duration, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = Math.round(eased * target);
+        if (p < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    });
+    obs.observe(el);
+  });
 </script>
 </body>
 </html>
