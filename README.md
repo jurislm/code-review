@@ -250,7 +250,7 @@ App Password 建立：Bitbucket → Settings → Personal settings → App passw
 | `database-reviewer` | 🟡 yellow | DB query、migration |
 | `network-config-reviewer` | 🟡 yellow | 網路設備設定 |
 | `healthcare-reviewer` | 🟣 magenta | PHI / HIPAA 合規（Opus 模型） |
-| `mle-reviewer` | 🟣 magenta | ML pipeline |
+| `mle-reviewer` | 🟣 magenta | ML pipeline（Sonnet 模型） |
 
 ---
 

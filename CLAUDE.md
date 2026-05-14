@@ -38,7 +38,7 @@ code-review/
 ### 語言 / 框架專項（17 個）
 - **藍色**：typescript · python · go · rust · cpp · csharp · java · kotlin · swift · fsharp
 - **黃色**：django · fastapi · flutter · database · network-config
-- **紫色（Opus）**：healthcare · mle
+- **紫色**：healthcare（Opus）· mle（Sonnet）
 
 ## Commands（9 個）
 
