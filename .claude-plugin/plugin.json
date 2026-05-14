@@ -1,7 +1,7 @@
 {
   "name": "code-review",
   "version": "1.0.0",
-  "description": "Complete code review ecosystem: 20+ language/framework reviewer agents, parallel PR review commands, and security scanning skills",
+  "description": "Complete code review ecosystem: 24 reviewer agents (17 language/framework), parallel PR review commands for GitHub & Bitbucket, and security scanning skills",
   "author": {
     "name": "Terry Chen",
     "email": "zxtw17985321@gmail.com",
