@@ -23,7 +23,21 @@ When invoked:
 
 1. **Gather context** — Run `git diff --staged` and `git diff` to see all changes. If no diff, check recent commits with `git log --oneline -5`.
 2. **Understand scope** — Identify which files changed, what feature/fix they relate to, and how they connect.
-3. **Read surrounding code** — Don't review changes in isolation. Read the full file and understand imports, dependencies, and call sites.
+3. **Read surrounding code and trace callers** — Don't review changes in isolation. Read the full file and understand imports, dependencies, and call sites.
+
+   **Caller Tracing** (required for any modified exported function, method, or class):
+   ```bash
+   # -n outputs file:line:match so you can directly locate and read the 3–5 most relevant callers
+   grep -r "SymbolName" --include="*.ts" --include="*.tsx" \
+     --include="*.js" --include="*.py" --include="*.go" --include="*.rs" -n . | head -20
+   ```
+   Read the **3–5 most relevant callers**. Look for:
+   - Callers that assume specific return types, argument shapes, or throw behavior
+   - Callers that rely on side effects being preserved
+   - Tests that encode the old contract
+
+   Skip tracing for: private helpers, test utilities, and symbols used only within the same file.
+
 4. **Apply review checklist** — Work through each category below, from CRITICAL to LOW.
 5. **Report findings** — Use the output format below. Only report issues you are confident about (>80% sure it is a real problem).
 
@@ -257,19 +271,37 @@ const usersWithPosts = await db.query(`
 - **Magic numbers** — Unexplained numeric constants
 - **Inconsistent formatting** — Mixed semicolons, quote styles, indentation
 
+### Style Nitpicks (NITPICK)
+
+Minor optional improvements that have no correctness or maintainability impact. Only include when `--profile=assertive` (default). Skip entirely in `--profile=chill`.
+
+- Formatting preferences the linter doesn't enforce (e.g., blank lines between methods)
+- Trivial rename suggestions (e.g., `res` → `response` in a 3-line function)
+- Optional doc additions for private helpers whose name is self-describing
+- Whitespace or comment alignment
+
 ## Review Output Format
 
-Organize findings by severity. For each issue:
+Organize findings by severity. For CRITICAL and HIGH findings, always include a diff block and an AI Implementation Prompt.
 
 ```
 [CRITICAL] Hardcoded API key in source
 File: src/api/client.ts:42
-Issue: API key "sk-abc..." exposed in source code. This will be committed to git history.
-Fix: Move to environment variable and add to .gitignore/.env.example
+Scenario: Any developer with repo access can extract the key from git history.
+Guard gap: No environment variable substitution; no .gitignore entry.
 
-  const apiKey = "sk-abc123";           // BAD
-  const apiKey = process.env.API_KEY;   // GOOD
+**Suggested fix:**
+```diff
+- const apiKey = "sk-abc123";
++ const apiKey = process.env.API_KEY;
 ```
+
+**AI Implementation Prompt**: In `src/api/client.ts` at line 42, the API key is hardcoded in source. Move it to an environment variable: replace the string literal with `process.env.API_KEY`, add `API_KEY=` to `.env.example`, and verify `.env` is in `.gitignore`.
+```
+
+For MEDIUM and LOW findings, a plain description and fix suggestion is sufficient (no diff block required).
+
+For NITPICK findings, a single sentence is enough.
 
 ### Summary Format
 
@@ -284,6 +316,7 @@ End every review with:
 | HIGH     | 2     | warn   |
 | MEDIUM   | 3     | info   |
 | LOW      | 1     | note   |
+| NITPICK  | 2     | note   |
 
 Verdict: WARNING — 2 HIGH issues should be resolved before merge.
 ```

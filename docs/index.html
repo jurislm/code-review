@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Code Review Plugin — Technical Documentation</title>
-  <meta name="description" content="24-agent code review ecosystem for Claude Code — complete technical reference for commands, agents, and skills." />
+  <meta name="description" content="25-agent code review ecosystem for Claude Code — complete technical reference for commands, agents, and skills." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Nunito:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -626,7 +626,7 @@
   <div class="topnav-brand">
     <div class="brand-logo">CR</div>
     code-review
-    <span class="brand-version">v1.1.0</span>
+    <span class="brand-version">v1.2.0</span>
   </div>
   <div class="topnav-links">
     <a href="https://github.com/jurislm/code-review">GitHub</a>
@@ -681,7 +681,7 @@
 
       <div class="badges">
         <span class="badge badge-gray">MIT License</span>
-        <span class="badge badge-lime">24 Agents</span>
+        <span class="badge badge-lime">25 Agents</span>
         <span class="badge badge-blue">9 Commands</span>
         <span class="badge badge-purple">3 Skills</span>
         <span class="badge badge-gray">Claude Code Plugin</span>
@@ -689,7 +689,7 @@
 
       <div class="stat-strip">
         <div class="stat-item">
-          <div class="stat-num" data-count="24">24</div>
+          <div class="stat-num" data-count="25">25</div>
           <div class="stat-label">Reviewer Agents</div>
         </div>
         <div class="stat-item">
@@ -711,7 +711,7 @@
       </div>
 
       <p class="lead">
-        完整 code review 生態系統，以 Claude Code plugin 形式發布。提供 24 個語言 / 框架專項 reviewer agent、9 個 slash command、以及 3 個自動觸發的安全 review skill。
+        完整 code review 生態系統，以 Claude Code plugin 形式發布。提供 25 個語言 / 框架專項 reviewer agent、9 個 slash command、以及 3 個自動觸發的安全 review skill。
       </p>
 
       <div class="callout callout-tip">
@@ -724,7 +724,7 @@
 
       <h3>核心特性</h3>
       <ul>
-        <li><strong>24 個 Reviewer Agent</strong> — 涵蓋 TypeScript、Python、Go、Rust、Java、Kotlin、Swift、C++、C#、F#、Django、FastAPI、Flutter、Database、Healthcare（PHI/HIPAA）、ML pipeline</li>
+        <li><strong>25 個 Reviewer Agent</strong> — 涵蓋 TypeScript、Python、Go、Rust、Java、Kotlin、Swift、C++、C#、F#、Django、FastAPI、Flutter、Database、Healthcare（PHI/HIPAA）、ML pipeline + Verification</li>
         <li><strong>六 Agent 並行 PR Review</strong> — <code>/review-pr</code> 同時啟動 6 個專項 agent，confidence &lt; 80% 自動過濾</li>
         <li><strong>多平台 PR Review</strong> — 自動偵測 GitHub（需 <code>gh</code> CLI）與 Bitbucket Cloud（需環境變數）</li>
         <li><strong>Auto-trigger Skills</strong> — 根據任務上下文自動啟動安全掃描，無需手動呼叫</li>
@@ -795,7 +795,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
           </div>
           syntax
         </div>
-        <pre><code>/code-review [pr-number | pr-url | blank]</code></pre>
+        <pre><code>/code-review [pr-number | pr-url | blank] [--profile=chill|assertive]</code></pre>
       </div>
 
       <h3 id="cmd-local">Local Review Mode</h3>
@@ -834,6 +834,18 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
       </div>
       <p>執行流程（8 phases）：Fetch → Context → Review → Validate → Decide → Report → Publish → Output</p>
 
+      <h3 id="cmd-profile">Review Profile</h3>
+      <p>控制 NITPICK 級別 finding 的顯示與否：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Flag</th><th>行為</th></tr></thead>
+          <tbody>
+            <tr><td><code>--profile=assertive</code></td><td>（預設）顯示全部 5 個嚴重等級，包含 NITPICK</td></tr>
+            <tr><td><code>--profile=chill</code></td><td>只報告 CRITICAL 與 HIGH，略過 MEDIUM / LOW / NITPICK</td></tr>
+          </tbody>
+        </table>
+      </div>
+
       <h3 id="cmd-bitbucket">Bitbucket Cloud PR Review Mode</h3>
       <p>URL 含 <code>bitbucket.org</code> 或 remote origin 指向 Bitbucket 時自動切換，使用 REST API（需 <code>BB_USERNAME</code>、<code>BB_APP_PASSWORD</code>）。</p>
       <div class="codeblock">
@@ -853,7 +865,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
     <!-- /review-pr -->
     <section class="doc-section" id="cmd-review-pr">
       <h2>/review-pr <span class="h2-tag">command</span></h2>
-      <p>同時啟動 6 個專項 agent 對同一 PR 進行並行審查，再彙整去重並排序 finding。confidence &lt; 80% 自動過濾。</p>
+      <p>同時啟動 6 個專項 agent 對同一 PR 進行並行審查，再彙整去重並排序 finding。confidence &lt; 80% 自動過濾。所有 HIGH / CRITICAL finding 須通過 <code>verification-reviewer</code>（Step 3.5）二次確認後才納入報告。</p>
 
       <div class="codeblock">
         <div class="codeblock-header">
@@ -894,6 +906,24 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
             <tr><td><code>silent-failure-hunter</code></td><td>swallowed error、ignored promise、錯誤傳遞缺失</td></tr>
             <tr><td><code>type-design-analyzer</code></td><td>型別封裝、invariant 表達、強制性</td></tr>
             <tr><td><code>code-simplifier</code></td><td>過度複雜實作、重複抽象、可讀性</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Step 3.5 — Verification Pass</h3>
+      <p>並行 agents 完成後，所有 HIGH 與 CRITICAL finding 自動送入 <code>verification-reviewer</code> 執行二次確認（三道關卡驗證）。只有通過確認的 finding 才會進入最終報告；CRITICAL 不可被移除，最多降為 HIGH。</p>
+
+      <h3>Walkthrough &amp; Effort Score</h3>
+      <p>每次 <code>/review-pr</code> 輸出前先產生 Walkthrough 摘要，包含逐檔變更說明與 PR 複雜度評分：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Effort Score</th><th>定義</th></tr></thead>
+          <tbody>
+            <tr><td><strong>1</strong></td><td>文件、設定或格式更新，無邏輯改動</td></tr>
+            <tr><td><strong>2</strong></td><td>小 bug fix 或輕微功能，1–3 個檔案</td></tr>
+            <tr><td><strong>3</strong></td><td>中型功能或重構，4–10 個檔案，含邏輯複雜度</td></tr>
+            <tr><td><strong>4</strong></td><td>複雜重構、核心邏輯改寫，或超過 10 個檔案</td></tr>
+            <tr><td><strong>5</strong></td><td>架構變更、DB schema migration、auth 系統或跨切面改動</td></tr>
           </tbody>
         </table>
       </div>
@@ -945,6 +975,19 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
             <span class="pill pill-model">Sonnet</span>
             <span class="pill">Read · Write · Edit · Bash · Grep · Glob</span>
             <span class="pill">觸發：auth · API endpoint · user input · secrets</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="agent-card" style="--agent-color: #b05a00">
+        <div class="agent-dot" style="background:#b05a00"></div>
+        <div class="agent-body">
+          <div class="agent-name">verification-reviewer</div>
+          <div class="agent-desc">驗證 agent，對 HIGH / CRITICAL finding 執行二次確認（三道關卡：讀取精確位置程式碼、確認失敗場景可重現、檢查現有 guard 是否已覆蓋）。只輸出 CONFIRMED 或 DEMOTED，不產生新 finding。由 <code>/review-pr</code> Step 3.5 自動調用。</div>
+          <div class="agent-pills">
+            <span class="pill pill-model">Sonnet</span>
+            <span class="pill">Read · Grep · Glob · Bash</span>
+            <span class="pill">觸發：/review-pr 並行 agents 輸出後</span>
           </div>
         </div>
       </div>
@@ -1078,6 +1121,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
             <tr><td><span class="sev sev-high">HIGH</span></td><td>Bug、顯著品質問題</td><td>WARN — 建議 merge 前修復</td></tr>
             <tr><td><span class="sev sev-medium">MEDIUM</span></td><td>可維護性問題</td><td>INFO — 考慮修復</td></tr>
             <tr><td><span class="sev sev-low">LOW</span></td><td>風格或輕微建議</td><td>NOTE — 選擇性修復</td></tr>
+            <tr><td><span class="sev" style="background:#555;color:#fff">NITPICK</span></td><td>純風格偏好，無正確性或可維護性影響</td><td>只在 <code>--profile=assertive</code>（預設）時顯示；<code>--profile=chill</code> 略過</td></tr>
           </tbody>
         </table>
       </div>
@@ -1174,7 +1218,7 @@ color: blue            <span class="c-comment"># green | red | blue | cyan | yel
 
 <footer>
   <span>MIT License · <a href="https://github.com/jurislm/code-review">jurislm/code-review</a></span>
-  <span>Built for <a href="https://claude.ai/code">Claude Code</a> · v1.1.0</span>
+  <span>Built for <a href="https://claude.ai/code">Claude Code</a> · v1.2.0</span>
 </footer>
 
 <script>

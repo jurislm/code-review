@@ -1,6 +1,6 @@
 ---
 description: Code review — local uncommitted changes or GitHub/Bitbucket PR (pass PR number/URL for PR mode)
-argument-hint: [pr-number | pr-url | blank for local review]
+argument-hint: [pr-number | pr-url | --from=<commit> | --profile=chill|assertive | blank for local review]
 ---
 
 # Code Review
@@ -15,6 +15,15 @@ argument-hint: [pr-number | pr-url | blank for local review]
 
 If `$ARGUMENTS` is blank:
 → Use **Local Review Mode**.
+
+If `$ARGUMENTS` contains `--from=<commit>`:
+→ Use **Incremental Local Review Mode** — same as Local Review Mode but only reviews files changed since `<commit>` (e.g. `--from=main`, `--from=HEAD~3`, `--from=abc1234`).
+
+If `$ARGUMENTS` contains `--profile=chill`:
+→ **Chill profile** — output only CRITICAL and HIGH findings. Skip MEDIUM, LOW, and NITPICK entirely. Best for fast-moving feature branches.
+
+If `$ARGUMENTS` contains `--profile=assertive` or no `--profile` flag:
+→ **Assertive profile** (default) — output all severity levels including NITPICK. Best for PR reviews targeting main/release branches.
 
 If `$ARGUMENTS` contains a PR number, PR URL, or `--pr`:
 
@@ -34,8 +43,14 @@ Comprehensive security and quality review of uncommitted changes.
 ### Phase 1 — GATHER
 
 ```bash
+# Full local review (default — no --from flag)
 git diff --name-only HEAD
+
+# Incremental review (--from=<commit> specified)
+git diff --name-only <commit>
 ```
+
+Use the incremental form when `--from=<commit>` is specified. In subsequent phases, use `git diff <commit>` (not `git diff <commit>..HEAD`) wherever a diff is needed — this includes any uncommitted working tree changes relative to `<commit>`, matching the Local Review Mode behaviour.
 
 If no changed files, stop: "Nothing to review."
 
@@ -106,10 +121,48 @@ Build review context:
 
 1. **Project rules** — Read `CLAUDE.md`, `.claude/docs/`, and any contributing guidelines
 2. **Planning artifacts** — Check `.claude/prds/`, `.claude/plans/`, `.claude/reviews/`, and legacy `.claude/PRPs/{prds,plans,reports,reviews}/` for context related to this PR
-3. **PR intent** — Parse PR description for goals, linked issues, test plans
+3. **PR intent** — Parse PR description for goals, linked issues, test plans. Explicitly fetch any linked issues:
+   ```bash
+   # Extracts all #N on each matching line (handles "Fixes #1, #2" correctly)
+   gh pr view <NUMBER> --json body --jq '.body' | \
+     perl -ne 'while (/(?:Fixes|Closes|Resolves|Related to)[^#]*#(\d+)/gi) { print "$1\n" }' | sort -u | \
+     while read -r num; do gh issue view "$num" --json number,title,body 2>/dev/null; done
+   ```
+   Include issue title and description as review context — understanding PR intent reduces false positives.
 4. **Changed files** — List all modified files and categorize by type (source, test, config, docs)
+5. **Caller tracing** — For each modified exported function, class, or method in the diff, find and read its call sites:
+   ```bash
+   # -n outputs file:line:match, making it easy to pick the 3–5 most relevant callers
+   grep -r "SymbolName" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+     --include="*.py" --include="*.go" --include="*.rs" -n . | head -20
+   ```
+   Read **3–5 most relevant callers**. Document any that make behavioral assumptions about the changed code (return type, thrown errors, side effects). Skip private/internal symbols used only within the same file.
+6. **Static analysis — run before review, capture as context** — Execute fast linters and type checker now. Do not fail on findings; treat output as signals for Phase 3:
+
+   **Node.js / TypeScript:**
+   ```bash
+   # Append || true so pipefail environments don't abort context collection
+   npx tsc --noEmit 2>&1 | head -60 || true
+   npm run lint -- --format=compact 2>&1 | head -60 || true
+   ```
+   **Rust:** `cargo clippy 2>&1 | head -60 || true`
+   **Go:** `go vet ./... 2>&1 | head -60 || true`
+   **Python:** `ruff check . 2>&1 | head -60 || true`
+
+   Store this output. Any `file:line` flagged here → review that location with elevated priority in Phase 3.
+
+7. **CI check status** — Read the current CI check results to surface known failures as review context:
+   ```bash
+   gh pr checks <NUMBER> 2>/dev/null | head -30
+   ```
+   If any checks are failing, note them at the top of Phase 3 with `⚠️ CI failing: <check_name>` and treat the related code paths as elevated-priority review areas. Do not block the review — just elevate priority.
 
 ### Phase 3 — REVIEW
+
+**Cross-reference static analysis signals first** — Check the linter/typecheck output captured in Phase 2 Step 6. For any `file:line` already flagged:
+- Treat as elevated-confidence finding (linter + code review = double signal)
+- Include the linter rule in the finding description
+- Skip re-flagging if the linter message is already precise and actionable
 
 Read each changed file **in full** (not just the diff hunks — you need surrounding context).
 
@@ -149,22 +202,18 @@ Detect the project type from config files (`package.json`, `Cargo.toml`, `go.mod
 
 **Node.js / TypeScript** (has `package.json`):
 ```bash
-npm run typecheck 2>/dev/null || npx tsc --noEmit 2>/dev/null  # Type check
-npm run lint                                                    # Lint
-npm test                                                        # Tests
-npm run build                                                   # Build
+npm test        # Tests
+npm run build   # Build
 ```
 
 **Rust** (has `Cargo.toml`):
 ```bash
-cargo clippy -- -D warnings  # Lint
-cargo test                   # Tests
-cargo build                  # Build
+cargo test   # Tests
+cargo build  # Build
 ```
 
 **Go** (has `go.mod`):
 ```bash
-go vet ./...    # Lint
 go test ./...   # Tests
 go build ./...  # Build
 ```
@@ -173,6 +222,8 @@ go build ./...  # Build
 ```bash
 pytest  # Tests
 ```
+
+> lint + typecheck already ran in Phase 2 Step 6 — record those results here; only re-run test + build.
 
 Run only the commands that apply to the detected project type. Record pass/fail for each.
 
@@ -203,6 +254,12 @@ Create review artifact at `.claude/reviews/pr-<NUMBER>-review.md`:
 **Author**: <author>
 **Branch**: <head> → <base>
 **Decision**: APPROVE | REQUEST CHANGES | BLOCK
+
+## Walkthrough
+
+| File | Change | Summary |
+|------|--------|---------|
+| `<file>` | Added / Modified / Deleted | <one-sentence description of what changed and why> |
 
 ## Summary
 <1-2 sentence overall assessment>
