@@ -28,7 +28,7 @@ Claude Code plugin，提供完整 code review 生態系統。
 ## 目錄結構
 
 ```
-agents/          # 26 個 agent（frontmatter: name/description/tools/model/color）
+agents/          # 27 個 agent（frontmatter: name/description/tools/model/color）
 commands/        # 9 個 slash command（/code-review、/review-pr、語言專項）
 skills/          # 3 個自動觸發 skill（security-review/security-scan/flutter-dart-code-review）
 docs/            # Landing page（GitHub Pages，純 HTML）
@@ -155,12 +155,15 @@ commit checklist：
 6. **Verification gate** — `/review-pr` Step 3.5 由 `verification-reviewer` 對 HIGH/CRITICAL 執行三道關卡二次確認；CRITICAL 不可被移除（最多降為 HIGH）
 7. **NITPICK 分層** — 純風格偏好歸類為 NITPICK；`--profile=chill` 時略過，`--profile=assertive`（預設）時顯示
 
-## Agents 清單（26 個）
+## Agents 清單（27 個）
 
 ### 通用主審
 - `code-reviewer`（green）— 主審，含 false positive 過濾
 - `security-reviewer`（red）— OWASP Top 10，遇 CRITICAL 警報
 - `verification-reviewer`（orange）— 第二道驗證，在輸出前過濾 HIGH/CRITICAL false positive
+
+### 前置分析
+- `code-graph-analyzer`（cyan）— L2 import dependency + L3 co-change 風險圖；在並行 agents 前執行，結果快取於 `.claude/code-graph/`
 
 ### `/review-pr` 協作（6 個）
 - `comment-analyzer` · `pr-test-analyzer` · `silent-failure-hunter` · `type-design-analyzer` · `code-simplifier` · `pr-walkthrough-writer`
@@ -175,7 +178,7 @@ commit checklist：
 | 檔案 | Slash command | 備註 |
 |------|--------------|------|
 | `code-review.md` | `/code-review` | 本地 diff 或 PR review（GitHub / Bitbucket） |
-| `review-pr.md` | `/review-pr` | 七 agent 並行（含 `pr-walkthrough-writer`）；`--focus=comments\|tests\|errors\|types\|code\|simplify` |
+| `review-pr.md` | `/review-pr` | `code-graph-analyzer` 前置 + 七 agent 並行；`--focus=comments\|tests\|errors\|types\|code\|simplify` |
 | `cpp-review.md` | `/cpp-review` | C++ 專項 |
 | `fastapi-review.md` | `/fastapi-review` | FastAPI 專項 |
 | `flutter-review.md` | `/flutter-review` | Flutter/Dart 專項 |

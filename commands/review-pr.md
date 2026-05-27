@@ -58,6 +58,28 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
      ```
      Pass linter output alongside the diff when launching each agent in Step 3.
 
+2.5. **Code Impact Map** — Run `code-graph-analyzer` **sequentially** (wait for result before proceeding to Step 3). This pre-computation step provides cross-file dependency context that all parallel reviewers need.
+
+   Pass to the agent:
+   - List of LOGIC and SECURITY files from the diff (exclude DOCS/CONFIG/TEST)
+   - Cache key: `pr-<number>-<first8charsOfHeadSha>` (e.g. `pr-123-abc12345`)
+
+   The agent will:
+   1. Check `.claude/code-graph/pr-<number>-<sha8>-impact-map.md` — return cached map if it exists
+   2. Otherwise run L2 import dependency tracing + L3 co-change git analysis and write to cache
+   3. Return the structured impact map markdown
+
+   **Store the returned markdown as `IMPACT_MAP`.**
+
+   When launching each parallel agent in Step 3, prepend the following to their prompt:
+   ```
+   [IMPACT MAP — use as additional context when reviewing cross-file risk; do not repeat verbatim in your findings]
+   <IMPACT_MAP content>
+   [END IMPACT MAP]
+   ```
+
+   If `code-graph-analyzer` returns an error or times out, proceed to Step 3 without impact map context — do not block the review.
+
 3. Run specialized review agents in parallel:
    - `code-reviewer`
    - `comment-analyzer`

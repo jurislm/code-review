@@ -1,14 +1,14 @@
 # Code Review Plugin for Claude Code
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-![Agents](https://img.shields.io/badge/Agents-25-blue)
+![Agents](https://img.shields.io/badge/Agents-27-blue)
 ![Commands](https://img.shields.io/badge/Commands-9-green)
 ![Skills](https://img.shields.io/badge/Skills-3-purple)
 ![Platform](https://img.shields.io/badge/Platform-Claude_Code-orange)
 ![GitHub](https://img.shields.io/badge/PR-GitHub-181717?logo=github)
 ![Bitbucket](https://img.shields.io/badge/PR-Bitbucket-0052CC?logo=bitbucket)
 
-完整 code review 生態系統，以 Claude Code plugin 形式發布。提供 25 個語言/框架專項 reviewer agent、9 個 slash command、以及 3 個安全 review skill。
+完整 code review 生態系統，以 Claude Code plugin 形式發布。提供 27 個 agent（含語言/框架專項 reviewer + Code Graph Analyzer）、9 個 slash command、以及 3 個安全 review skill。
 
 ---
 
@@ -16,8 +16,8 @@
 
 | | |
 |---|---|
-| 🤖 **26 個 Reviewer Agent** | TypeScript · Python · Go · Rust · Java · Kotlin · Swift · C++ · C# · F# · Django · FastAPI · Flutter · DB · Healthcare · ML + Verification + PR Walkthrough |
-| ⚡ **七 Agent 並行 + Verification Pass** | `/review-pr` 同時啟動 7 個專項 agent（含 `pr-walkthrough-writer`）；HIGH/CRITICAL finding 由 `verification-reviewer` 二次確認後才輸出 |
+| 🤖 **27 個 Agent** | TypeScript · Python · Go · Rust · Java · Kotlin · Swift · C++ · C# · F# · Django · FastAPI · Flutter · DB · Healthcare · ML + Code Graph Analyzer + Verification + PR Walkthrough |
+| ⚡ **Code Graph + 七 Agent 並行** | `/review-pr` 先執行 `code-graph-analyzer`（import deps + co-change risk），結果快取至 `.claude/code-graph/`；再並行啟動 7 個專項 agent；HIGH/CRITICAL finding 由 `verification-reviewer` 二次確認 |
 | 🔗 **雙平台 PR Review** | 自動偵測 GitHub（`gh` CLI）或 Bitbucket Cloud（REST API v2.0） |
 | 🔒 **多層安全掃描** | OWASP Top 10 · PHI/HIPAA · Claude Code 設定掃描 |
 | 🎯 **高信心原則** | 只報告 >80% 確信的問題，零 finding = APPROVE，不製造雜訊 |
@@ -222,6 +222,12 @@ App Password 建立：Bitbucket → Settings → Personal settings → App passw
 | `code-reviewer` | 🟢 green | 主審，含嚴格 false positive 過濾，React / Node.js 專項規則 |
 | `security-reviewer` | 🔴 red | OWASP Top 10 掃描，遇 CRITICAL 發緊急警報 |
 | `verification-reviewer` | 🟠 orange | HIGH/CRITICAL finding 二次確認（三道關卡）；由 `/review-pr` Step 3.5 自動調用 |
+
+### 前置分析
+
+| Agent | Color | 說明 |
+|-------|-------|------|
+| `code-graph-analyzer` | 🔵 cyan | L2 import dependency + L3 co-change risk；並行 agents 前執行；快取於 `.claude/code-graph/` |
 
 ### `/review-pr` 協作 Agents
 

@@ -681,7 +681,7 @@
 
       <div class="badges">
         <span class="badge badge-gray">MIT License</span>
-        <span class="badge badge-lime">26 Agents</span>
+        <span class="badge badge-lime">27 Agents</span>
         <span class="badge badge-blue">9 Commands</span>
         <span class="badge badge-purple">3 Skills</span>
         <span class="badge badge-gray">Claude Code Plugin</span>
@@ -689,7 +689,7 @@
 
       <div class="stat-strip">
         <div class="stat-item">
-          <div class="stat-num" data-count="25">25</div>
+          <div class="stat-num" data-count="27">27</div>
           <div class="stat-label">Reviewer Agents</div>
         </div>
         <div class="stat-item">
@@ -989,6 +989,21 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
             <span class="pill">Read · Grep · Glob · Bash</span>
             <span class="pill">觸發：/review-pr 並行 agents 輸出後</span>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Agents — Graph -->
+    <section class="doc-section" id="agents-graph">
+      <h2>Agents — 前置分析 <span class="h2-tag">agents</span></h2>
+      <p>在並行 reviewer agents 啟動前，<strong>依序執行</strong>，建立跨檔案依賴圖，供所有下游 agent 使用。</p>
+
+      <div class="agent-card" style="--agent-color: #1a7a88">
+        <div class="agent-dot" style="background:#1a7a88"></div>
+        <div class="agent-body">
+          <div class="agent-name">code-graph-analyzer</div>
+          <div class="agent-desc">預計算 Code Impact Map：L2 import dependency tracing（grep-based，單跳 BFS）+ L3 co-change risk（git log 最近 50 commits）。結果快取於 <code>.claude/code-graph/</code>，下次相同 SHA 直接命中快取。由 <code>/review-pr</code> Step 2.5 和 <code>/code-review</code> Phase 2.5 自動調用。</div>
+          <div class="agent-pills"><span class="pill pill-model">Sonnet</span><span class="pill">Read · Grep · Glob · Bash · Write</span></div>
         </div>
       </div>
     </section>

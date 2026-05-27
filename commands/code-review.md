@@ -221,6 +221,20 @@ Build review context:
 
    Store this output. Any `file:line` flagged here → review that location with elevated priority in Phase 3.
 
+### Phase 2.5 — CODE GRAPH
+
+Run `code-graph-analyzer` **sequentially** (wait for result before starting Phase 3). This provides cross-file dependency context unavailable from the diff alone.
+
+Pass to the agent:
+- LOGIC and SECURITY files identified in Phase 1.5 (exclude DOCS/CONFIG/TEST)
+- Cache key: `pr-<number>-<first8charsOfHeadSha>` for PR mode; `local-<sha8>` for local diff mode (use `git rev-parse --short HEAD`)
+
+The agent checks `.claude/code-graph/<cache_key>-impact-map.md` first — returns cached map if the SHA matches. Otherwise computes L2 import dependencies and L3 co-change risk, then writes to `.claude/code-graph/`.
+
+**Store the returned markdown as `IMPACT_MAP`.** Pass it as context to Phase 3 review, annotating findings that involve files mentioned in the "High-risk dependents" or "Missing co-changes" sections with elevated priority.
+
+If `code-graph-analyzer` returns an error or times out, proceed to Phase 3 without impact map context — do not block the review.
+
 7. **CI check status** — Read the current CI check results to surface known failures as review context:
    ```bash
    gh pr checks <NUMBER> 2>/dev/null | head -30
