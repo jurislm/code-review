@@ -37,7 +37,35 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
      "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/diff"
    ```
 
-2. Find project guidance and trace call context:
+2. Find project guidance, classify files, and trace call context:
+
+   **File classification** — Classify each changed file and populate lists for Step 2.5:
+
+   ```bash
+   CHANGED_FILES=$(gh pr diff <NUMBER> --name-only)
+   LOGIC_FILES=()
+   SECURITY_FILES=()
+   while IFS= read -r file; do
+     case "$file" in
+       *.md|*.txt|*.rst|*.adoc|CHANGELOG*|LICENSE*|README*)
+         echo "DOCS: $file" ;;
+       *.json|*.yaml|*.yml|*.toml|*package-lock*|*.lock|*.sum)
+         echo "CONFIG: $file" ;;
+     *auth*|*crypto*|*token*|*password*|*session*|*jwt*|*oauth*|*secret*)
+         echo "SECURITY: $file"; SECURITY_FILES+=("$file") ;;
+       *test*|*spec*|*__tests__*|*.test.*|*.spec.*)
+         echo "TEST: $file" ;;
+       *.ts|*.tsx|*.js|*.jsx|*.py|*.go|*.rs|*.kt|*.swift|*.java|*.cs|*.rb|*.php|\
+   *.cpp|*.cc|*.c|*.h|*.hpp|*.dart|*.scala|*.ex|*.exs|*.lua|*.vue|*.svelte)
+         echo "LOGIC: $file"; LOGIC_FILES+=("$file") ;;
+       *)
+         echo "OTHER: $file" ;;
+     esac
+   done <<< "$CHANGED_FILES"
+   ```
+
+   `$LOGIC_FILES` and `$SECURITY_FILES` are now available as arrays for Step 2.5.
+
    - Read `CLAUDE.md`, lint config, TypeScript config, repo conventions
    - For each modified exported function, class, or method identified in the diff, trace its callers:
      ```bash
@@ -61,7 +89,7 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
 2.5. **Code Impact Map** — Run `code-graph-analyzer` **sequentially** (wait for result before proceeding to Step 3). This pre-computation step provides cross-file dependency context that all parallel reviewers need.
 
    Pass to the agent:
-   - List of LOGIC and SECURITY files from the diff (exclude DOCS/CONFIG/TEST)
+   - `${LOGIC_FILES[@]}` and `${SECURITY_FILES[@]}` arrays from Step 2 classification (excludes DOCS/CONFIG/TEST)
    - Cache key: `pr-<number>-<first8charsOfHeadSha>` (e.g. `pr-123-abc12345`)
 
    The agent will:
@@ -81,6 +109,20 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    If `code-graph-analyzer` returns an error or times out, proceed to Step 3 without impact map context — do not block the review.
 
 3. Run specialized review agents in parallel:
+
+   **Focus filtering** — `code-reviewer` always runs as the anchor agent. When `--focus` is specified, run only the mapped subset:
+
+   | `--focus` value | Agents to run |
+   |---|---|
+   | _(none)_ | All 8 agents (full stack) |
+   | `comments` | `code-reviewer` + `comment-analyzer` |
+   | `tests` | `code-reviewer` + `pr-test-analyzer` |
+   | `errors` | `code-reviewer` + `silent-failure-hunter` |
+   | `types` | `code-reviewer` + `type-design-analyzer` |
+   | `code` | `code-reviewer` + `security-reviewer` |
+   | `simplify` | `code-reviewer` + `code-simplifier` |
+
+   Full agent list (all run when no `--focus`):
    - `code-reviewer`
    - `security-reviewer` — OWASP Top 10 analysis
    - `comment-analyzer`
@@ -88,7 +130,7 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    - `silent-failure-hunter`
    - `type-design-analyzer`
    - `code-simplifier`
-   - `pr-walkthrough-writer` — generates structured walkthrough and Mermaid sequence diagram
+   - `pr-walkthrough-writer` — generates structured walkthrough and Mermaid sequence diagram (skip when `--focus` is set); **store its full output as `WALKTHROUGH_OUTPUT`**
 
 3.5. **Verification pass** — Launch `verification-reviewer` with all HIGH and CRITICAL findings from Step 3. Wait for its output before proceeding. Only carry forward findings that survive verification (CONFIRMED status). CRITICAL findings from any agent are never dropped by this pass — they may be demoted to HIGH but not removed.
 
@@ -96,7 +138,7 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
 
    **Step 4a — Deduplicate**: Group findings by file + approximate line. Keep only one instance per issue.
 
-   **Step 4b — Contradiction filter**: If two agents flag the same code for opposite reasons, or one flags while another explicitly approves, require ≥ 2 agents in agreement before including. **Exception**: CRITICAL-severity findings from any agent are always included regardless of agent agreement count.
+   **Step 4b — Contradiction filter**: If two agents flag the same code for opposite reasons, or one flags while another explicitly approves, require ≥ 2 agents in agreement before including. **Exception**: Findings originally rated CRITICAL by any agent are always included regardless of agent agreement count — this applies even if verification-reviewer demoted the finding to HIGH in Step 3.5.
 
    **Step 4c — Confidence filter**: Drop findings framed as "might", "possibly", or "consider" unless CRITICAL severity. Only report findings with ≥ 80% confidence.
 
@@ -107,11 +149,21 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
 
    **Step 4e — Rank**: CRITICAL → HIGH → MEDIUM → LOW
 
+   **Step 4f — Count and group by severity** (store for Steps 6b and 6c):
+
+   ```bash
+   CRITICAL_COUNT=<number of CRITICAL findings>
+   HIGH_COUNT=<number of HIGH findings>
+   MEDIUM_COUNT=<number of MEDIUM findings>
+   LOW_COUNT=<number of LOW and NITPICK findings>
+   LOW_NITPICK_LIST=<formatted markdown list of all LOW and NITPICK findings>
+   ```
+
 5. Post dedicated walkthrough comment — this is the **first** thing developers see, posted before any findings:
 
    **5a — Build walkthrough content:**
 
-   If `pr-walkthrough-writer` ran in Step 3, use its structured output directly. Otherwise generate inline using the rubric below.
+   If `pr-walkthrough-writer` ran in Step 3, use `WALKTHROUGH_OUTPUT` captured there. If `WALKTHROUGH_OUTPUT` is empty or the agent errored, generate inline using the rubric below.
 
    Effort score rubric (1–5):
    - **1** — Docs, config, or formatting only; no logic change
@@ -216,7 +268,11 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    # APPROVE — zero CRITICAL/HIGH, all validation passes
    gh pr review <NUMBER> --approve --body "$REVIEW_BODY"
 
-   # REQUEST CHANGES — any HIGH or validation failure
+   # BLOCK — any CRITICAL findings (prepend ⛔ BLOCK header to $REVIEW_BODY when CRITICAL_COUNT > 0)
+   # GitHub has no native BLOCK review state — use REQUEST CHANGES with a prominent ⛔ BLOCK header
+   gh pr review <NUMBER> --request-changes --body "$REVIEW_BODY"
+
+   # REQUEST CHANGES — any HIGH or validation failure (no CRITICAL)
    gh pr review <NUMBER> --request-changes --body "$REVIEW_BODY"
 
    # COMMENT — draft PR
@@ -249,11 +305,67 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    ```bash
    curl -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
      -H "Content-Type: application/json" \
-     -d "{\"content\":{\"raw\":\"**Low Priority (${LOW_COUNT}):**\n\n${LOW_LIST}\"}}" \
+     -d "{\"content\":{\"raw\":\"**Low Priority (${LOW_COUNT}):**\n\n${LOW_NITPICK_LIST}\"}}" \
      .../comments
    ```
 
-7. Report findings grouped by severity
+7. **Update PR description** — Auto-append a structured review summary. Idempotent — strips any previously generated block before appending:
+
+   ```bash
+   CURRENT_BODY=$(gh pr view <NUMBER> --json body --jq '.body')
+
+   STRIPPED=$(echo "$CURRENT_BODY" | python3 -c "
+   import sys, re
+   body = sys.stdin.read()
+   body = re.sub(r'<!-- cr-summary:start -->.*?<!-- cr-summary:end -->', '', body, flags=re.DOTALL)
+   body = re.sub(r'<!-- cr-summary:start -->', '', body)
+   print(body.strip())
+   ")
+
+   SUMMARY_BLOCK="<!-- cr-summary:start -->
+
+   ---
+   ## 📋 Code Review Summary
+
+   | Category | Files |
+   |---|---|
+   | Logic / Feature | <logic_files> |
+   | Tests | <test_files> |
+   | Config / Docs | <config_doc_files> |
+
+   **Reviewed**: $(date +%Y-%m-%d) · **Findings**: ${CRITICAL_COUNT} critical · ${HIGH_COUNT} high · ${MEDIUM_COUNT} medium
+   <!-- cr-summary:end -->"
+
+   printf '%s\n\n%s' "$STRIPPED" "$SUMMARY_BLOCK" \
+     | gh pr edit <NUMBER> --body-file -
+   ```
+
+   > Skip this step for Bitbucket (REST API does not support PR description updates via the same CLI workflow).
+
+8. Report findings grouped by severity
+
+9. **Save HEAD commit for incremental tracking** — **Only run if Step 6b completed successfully** (the `gh pr review` command returned exit code 0). If Step 6b failed, skip this so the next run retries from scratch.
+
+   ```bash
+   mkdir -p .claude/reviews
+   gh pr view <NUMBER> --json headRefOid --jq '.headRefOid' \
+     > ".claude/reviews/pr-<NUMBER>-last-commit.txt"
+   ```
+
+   Add the following skip-if-unchanged check at the very start of this command (before Step 1), so repeated runs on unchanged PRs return early:
+
+   ```bash
+   LAST_COMMIT_FILE=".claude/reviews/pr-<NUMBER>-last-commit.txt"
+   CURRENT_HEAD=$(gh pr view <NUMBER> --json headRefOid --jq '.headRefOid')
+   if [ -f "$LAST_COMMIT_FILE" ]; then
+     LAST_COMMIT=$(cat "$LAST_COMMIT_FILE")
+     if [ "$LAST_COMMIT" = "$CURRENT_HEAD" ]; then
+       echo "No new commits since last review. Nothing to do."
+       exit 0
+     fi
+     echo "New commits detected ($LAST_COMMIT → $CURRENT_HEAD). Running full review."
+   fi
+   ```
 
 ## Confidence Rule
 

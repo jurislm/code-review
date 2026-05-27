@@ -140,38 +140,38 @@ fi
 ```bash
 CHANGED_FILES=$(gh pr diff <NUMBER> --name-only)
 FAST_ONLY=true
-LOGIC_FILES=()
-SECURITY_FILES=()
+LOGIC_FILES=""
+SECURITY_FILES=""
 while IFS= read -r file; do
   case "$file" in
     *.md|*.txt|*.rst|*.adoc|CHANGELOG*|LICENSE*|README*)
       echo "DOCS: $file" ;;
     *.json|*.yaml|*.yml|*.toml|*package-lock*|*.lock|*.sum)
       echo "CONFIG: $file" ;;
+    *auth*|*crypto*|*token*|*password*|*session*|*jwt*|*oauth*|*secret*)
+      echo "SECURITY: $file"; SECURITY_FILES="${SECURITY_FILES:+$SECURITY_FILES }$file"; FAST_ONLY=false ;;
     *test*|*spec*|*__tests__*|*.test.*|*.spec.*)
       echo "TEST: $file" ;;
-    *auth*|*crypto*|*token*|*password*|*session*|*jwt*|*oauth*|*secret*)
-      echo "SECURITY: $file"; SECURITY_FILES+=("$file"); FAST_ONLY=false ;;
     *.ts|*.tsx|*.js|*.jsx|*.py|*.go|*.rs|*.kt|*.swift|*.java|*.cs|*.rb|*.php|\
 *.cpp|*.cc|*.c|*.h|*.hpp|*.dart|*.scala|*.ex|*.exs|*.lua|*.vue|*.svelte)
-      echo "LOGIC: $file"; LOGIC_FILES+=("$file"); FAST_ONLY=false ;;
+      echo "LOGIC: $file"; LOGIC_FILES="${LOGIC_FILES:+$LOGIC_FILES }$file"; FAST_ONLY=false ;;
     *)
       echo "OTHER: $file" ;;
   esac
 done <<< "$CHANGED_FILES"
 ```
 
-`$LOGIC_FILES` and `$SECURITY_FILES` are now available as arrays for Phase 2.5.
+`$LOGIC_FILES` and `$SECURITY_FILES` are now available as space-separated lists for Phase 2.5.
 
 **Fast Path** (only DOCS + CONFIG + OTHER — zero LOGIC/SECURITY files):
-- Skip Phases 2–5 (context building and deep review)
-- Run only Phase 2 Step 6 (static analysis / secret scan)
-- If zero credentials or secrets found: APPROVE with brief note "Docs/config changes — no logic review needed"
-- If a secret/credential is detected: escalate to full Slow Path immediately
+- Skip Phases 2, 3, 4, and 5 entirely
+- Run **secret scan only**: execute the static analysis / secret scan commands from Phase 2 Step 6 (linters + credential patterns)
+- If zero secrets or credentials found: APPROVE with brief note "Docs/config changes — no logic review needed", then proceed directly to Phase 6
+- If a secret/credential is detected: exit Fast Path and run the full Slow Path from Phase 2 onwards
 
 **Slow Path** (any LOGIC or SECURITY file present): proceed to Phase 2 normally.
 
-**SECURITY files**: in Phase 3, pass `${SECURITY_FILES[@]}` explicitly to `security-reviewer` for prioritized analysis.
+**SECURITY files**: in Phase 3, pass `$SECURITY_FILES` explicitly to `security-reviewer` for prioritized analysis.
 
 ### Phase 2 — CONTEXT
 
@@ -229,8 +229,8 @@ Build review context:
 Run `code-graph-analyzer` **sequentially** (wait for result before starting Phase 3). This provides cross-file dependency context unavailable from the diff alone.
 
 Pass to the agent:
-- `${LOGIC_FILES[@]}` and `${SECURITY_FILES[@]}` arrays from Phase 1.5 (excludes DOCS/CONFIG/TEST)
-- Cache key: `pr-<number>-<first8charsOfHeadSha>` for PR mode; `local-<sha8>` for local diff mode (use `git rev-parse --short HEAD`)
+- `$LOGIC_FILES` and `$SECURITY_FILES` space-separated lists from Phase 1.5 (excludes DOCS/CONFIG/TEST)
+- Cache key: `pr-<number>-<first8charsOfHeadSha>` for PR mode; `local-<sha8>` for local diff mode (use `git rev-parse --short=8 HEAD`)
 
 The agent checks `.claude/code-graph/<cache_key>-impact-map.md` first — returns cached map if the SHA matches. Otherwise computes L2 import dependencies and L3 co-change risk, then writes to `.claude/code-graph/`.
 
@@ -396,8 +396,9 @@ CURRENT_BODY=$(gh pr view <NUMBER> --json body --jq '.body')
 STRIPPED=$(echo "$CURRENT_BODY" | python3 -c "
 import sys, re
 body = sys.stdin.read()
-body = re.sub(r'<!-- cr-summary:start -->.*?<!-- cr-summary:end -->', '', body, flags=re.DOTALL).strip()
-print(body)
+body = re.sub(r'<!-- cr-summary:start -->.*?<!-- cr-summary:end -->', '', body, flags=re.DOTALL)
+body = re.sub(r'<!-- cr-summary:start -->', '', body)
+print(body.strip())
 ")
 
 SUMMARY_BLOCK="<!-- cr-summary:start -->
@@ -516,7 +517,10 @@ Artifacts:
 
 Save current HEAD commit for incremental review tracking (next review will only process new commits):
 
+**Only write this file if Phase 7 completed successfully** (the `gh pr review` command in Step 7b returned exit code 0). If Phase 7 failed for any reason (network error, expired token, API error), skip writing this file so the next run retries from scratch rather than silently skipping the PR.
+
 ```bash
+# Only run if Phase 7 succeeded
 mkdir -p .claude/reviews
 gh pr view <NUMBER> --json headRefOid --jq '.headRefOid' \
   > ".claude/reviews/pr-<NUMBER>-last-commit.txt"

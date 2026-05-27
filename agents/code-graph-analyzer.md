@@ -185,12 +185,14 @@ Files that changed together in the last 50 commits:
 
 ## Step 5 — Persist and Return
 
-```bash
-# Write to cache
-cat > "$CACHE_FILE" << 'MAPEOF'
-<assembled_document_content>
-MAPEOF
+Use the **Write tool** to persist the impact map assembled in Step 4:
 
+- **Path**: `.claude/code-graph/${CACHE_KEY}-impact-map.md`
+- **Content**: the full markdown document generated in Step 4 (the complete `# Code Impact Map` document, not a placeholder)
+
+Then run:
+
+```bash
 echo "Impact map written to $CACHE_FILE"
 ```
 

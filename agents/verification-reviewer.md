@@ -111,7 +111,7 @@ Evidence: <what you found that contradicts the finding>
 | Verdict | Meaning | Action |
 |---------|---------|--------|
 | INVALID | Code doesn't match description or already fixed | If original severity is CRITICAL → demote to HIGH (never remove); otherwise remove entirely |
-| UNCERTAIN | Failure scenario not concretely triggerable | Downgrade to MEDIUM if concern is real, remove if speculative |
+| UNCERTAIN | Failure scenario not concretely triggerable | If original severity is CRITICAL → demote to HIGH (never remove); if HIGH → downgrade to MEDIUM if concern is real; otherwise remove if speculative |
 | FALSE POSITIVE | Existing guard already handles it | If original severity is CRITICAL → demote to HIGH (never remove); otherwise remove entirely |
 
 **CRITICAL findings are never removed** — they may be demoted to HIGH but must always appear in output. This applies regardless of which agent raised the finding.
