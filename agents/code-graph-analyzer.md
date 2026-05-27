@@ -59,21 +59,45 @@ Dependents are the most important: if the changed file's exported interface chan
 
 ```bash
 BASENAME=$(basename "<changed_file>" | sed 's/\.[^.]*$//')
-# Search across all source files — adjust extensions as needed
+EXCLUDE="--exclude-dir=node_modules --exclude-dir=.git --exclude-dir=__tests__ --exclude=*.test.* --exclude=*.spec.*"
+
+# JS/TS: quoted import specifiers (ES modules + require)
 grep -rn "from.*['\"].*${BASENAME}['\"]" \
   --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
-  --include="*.py" --include="*.go" --include="*.rs" --include="*.kt" \
-  --include="*.swift" --include="*.java" --include="*.cs" \
-  --exclude-dir=node_modules --exclude-dir=.git \
-  --exclude-dir=__tests__ --exclude="*.test.*" --exclude="*.spec.*" \
-  . 2>/dev/null | head -20 || true
-
-# Also check require() style
+  $EXCLUDE . 2>/dev/null | head -20 || true
 grep -rn "require.*['\"].*${BASENAME}['\"]" \
-  --include="*.js" --include="*.jsx" --include="*.ts" \
-  --exclude-dir=node_modules --exclude-dir=.git \
-  --exclude-dir=__tests__ --exclude="*.test.*" --exclude="*.spec.*" \
-  . 2>/dev/null | head -10 || true
+  --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+  $EXCLUDE . 2>/dev/null | head -10 || true
+
+# Python: import BASENAME / from BASENAME import
+grep -rn "^\(import\|from\) .*${BASENAME}" \
+  --include="*.py" $EXCLUDE . 2>/dev/null | head -10 || true
+
+# Java / Kotlin: import com.example.BASENAME
+grep -rn "import .*\.${BASENAME}" \
+  --include="*.java" --include="*.kt" $EXCLUDE . 2>/dev/null | head -10 || true
+
+# Go: uses the directory path, not basename — skip (Go imports are path-based, not name-based)
+
+# Rust: use crate::...::BASENAME
+grep -rn "use .*::${BASENAME}" \
+  --include="*.rs" $EXCLUDE . 2>/dev/null | head -10 || true
+
+# Swift: import BASENAME (module-level only)
+grep -rn "^import ${BASENAME}" \
+  --include="*.swift" $EXCLUDE . 2>/dev/null | head -10 || true
+
+# C#: using BASENAME / using ...BASENAME
+grep -rn "using .*${BASENAME}" \
+  --include="*.cs" $EXCLUDE . 2>/dev/null | head -10 || true
+
+# Ruby: require / require_relative with BASENAME
+grep -rn "require.*['\"].*${BASENAME}['\"]" \
+  --include="*.rb" $EXCLUDE . 2>/dev/null | head -10 || true
+
+# PHP: use / require / include with BASENAME
+grep -rn "\(use\|require\|include\).*${BASENAME}" \
+  --include="*.php" $EXCLUDE . 2>/dev/null | head -10 || true
 ```
 
 **Record**: list of `file:line` that import the changed file.

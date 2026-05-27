@@ -42,14 +42,17 @@ For each HIGH or CRITICAL finding, run the three-gate check:
 **MANDATORY before writing any verdict**: Run at least one of these and record the output.
 
 ```bash
-# Option A: grep to confirm the exact pattern exists at the cited location
-grep -n "exact_pattern_from_finding" path/to/file | head -10 || true
+# Option A: fixed-string grep to confirm the exact pattern exists at the cited location
+# Use -F (fixed-string, not regex) and -- to prevent patterns starting with - being treated as flags
+grep -Fn -- "exact_pattern_from_finding" path/to/file | head -10 || true
 
 # Option B: Read the file around the cited line (±30 lines)
 # Use the Read tool: path/to/file, offset=(line-30), limit=60
 ```
 
 Confirm the code described in the finding actually exists at that location. Record the command you ran and what it returned. If grep returns 0 matches, or the Read output shows different code than described → **INVALID immediately** (no further gates needed).
+
+> **Why -F**: grep treats patterns as regex by default. Finding descriptions often contain `[`, `(`, `*`, `.`, `?` from type annotations or function calls — these are regex metacharacters that silently cause 0 matches and trigger false INVALID demotions. `-F` matches the literal string exactly.
 
 ### Gate 2 — Confirm the Failure Scenario
 
@@ -66,7 +69,8 @@ If you cannot answer all three with evidence from the code, **demote to UNCERTAI
 
 ```bash
 # Search for existing guards — substitute the actual function/variable name from the finding
-grep -ERn "FunctionName|guardPattern" \
+# Use -r (not -R) to avoid following symlinks, which can cause infinite loops in pnpm repos
+grep -Ern "FunctionName|guardPattern" \
   --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
   --include="*.py" --include="*.go" --include="*.rs" \
   --exclude-dir=node_modules --exclude-dir=.git \
@@ -106,15 +110,17 @@ Evidence: <what you found that contradicts the finding>
 
 | Verdict | Meaning | Action |
 |---------|---------|--------|
-| INVALID | Code doesn't match description or already fixed | Remove entirely |
+| INVALID | Code doesn't match description or already fixed | If original severity is CRITICAL → demote to HIGH (never remove); otherwise remove entirely |
 | UNCERTAIN | Failure scenario not concretely triggerable | Downgrade to MEDIUM if concern is real, remove if speculative |
-| FALSE POSITIVE | Existing guard already handles it | Remove entirely |
+| FALSE POSITIVE | Existing guard already handles it | If original severity is CRITICAL → demote to HIGH (never remove); otherwise remove entirely |
+
+**CRITICAL findings are never removed** — they may be demoted to HIGH but must always appear in output. This applies regardless of which agent raised the finding.
 
 ## What You Must NOT Do
 
 - Do not add new findings that the parallel agents missed (that is not your job)
 - Do not demote a finding just because fixing it is inconvenient
-- Do not demote CRITICAL security-reviewer findings without clear contradicting evidence
+- Do not demote CRITICAL findings from any agent without clear contradicting evidence
 - Do not output more than one verification sentence per finding — be decisive
 
 ## Confidence Standard

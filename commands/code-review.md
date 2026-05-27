@@ -117,31 +117,31 @@ If PR not found, stop with error. Store PR metadata for later phases.
 
 ### Phase 1.5 — CLASSIFY
 
-**Incremental review detection**: Check if this PR was previously reviewed and only process new commits:
+**Incremental review detection**: Check if this PR was previously reviewed; skip if no new commits:
 
 ```bash
 LAST_COMMIT_FILE=".claude/reviews/pr-<NUMBER>-last-commit.txt"
+CURRENT_HEAD=$(gh pr view <NUMBER> --json headRefOid --jq '.headRefOid')
 if [ -f "$LAST_COMMIT_FILE" ]; then
   LAST_COMMIT=$(cat "$LAST_COMMIT_FILE")
-  CURRENT_HEAD=$(gh pr view <NUMBER> --json headRefOid --jq '.headRefOid')
   if [ "$LAST_COMMIT" = "$CURRENT_HEAD" ]; then
     echo "No new commits since last review. Nothing to do."
     exit 0
   fi
-  echo "Incremental review: covering commits since $LAST_COMMIT"
-  REVIEW_MODE="INCREMENTAL"
-else
-  echo "Full review (first time for PR #<NUMBER>)"
-  REVIEW_MODE="FULL"
+  echo "New commits detected since last review ($LAST_COMMIT → $CURRENT_HEAD). Running full review."
 fi
-# LAST_COMMIT_FILE is written at the end of Phase 8
+# LAST_COMMIT_FILE is written at the end of Phase 8 so the next run can skip if unchanged
 ```
+
+> Note: This is a **skip-if-unchanged** gate, not a diff-scoping mechanism. When new commits exist, the full PR diff is always reviewed. This ensures no regressions are missed from rebases or force-pushes.
 
 **File classification**: Route between Fast Path and Slow Path:
 
 ```bash
 CHANGED_FILES=$(gh pr diff <NUMBER> --name-only)
 FAST_ONLY=true
+LOGIC_FILES=()
+SECURITY_FILES=()
 while IFS= read -r file; do
   case "$file" in
     *.md|*.txt|*.rst|*.adoc|CHANGELOG*|LICENSE*|README*)
@@ -151,14 +151,16 @@ while IFS= read -r file; do
     *test*|*spec*|*__tests__*|*.test.*|*.spec.*)
       echo "TEST: $file" ;;
     *auth*|*crypto*|*token*|*password*|*session*|*jwt*|*oauth*|*secret*)
-      echo "SECURITY: $file"; FAST_ONLY=false ;;
+      echo "SECURITY: $file"; SECURITY_FILES+=("$file"); FAST_ONLY=false ;;
     *.ts|*.tsx|*.js|*.jsx|*.py|*.go|*.rs|*.kt|*.swift|*.java|*.cs|*.rb|*.php)
-      echo "LOGIC: $file"; FAST_ONLY=false ;;
+      echo "LOGIC: $file"; LOGIC_FILES+=("$file"); FAST_ONLY=false ;;
     *)
       echo "OTHER: $file" ;;
   esac
 done <<< "$CHANGED_FILES"
 ```
+
+`$LOGIC_FILES` and `$SECURITY_FILES` are now available as arrays for Phase 2.5.
 
 **Fast Path** (only DOCS + CONFIG + OTHER — zero LOGIC/SECURITY files):
 - Skip Phases 2–5 (context building and deep review)
@@ -168,7 +170,7 @@ done <<< "$CHANGED_FILES"
 
 **Slow Path** (any LOGIC or SECURITY file present): proceed to Phase 2 normally.
 
-**SECURITY files**: in Phase 3, pass these filenames explicitly to `security-reviewer` for prioritized analysis.
+**SECURITY files**: in Phase 3, pass `${SECURITY_FILES[@]}` explicitly to `security-reviewer` for prioritized analysis.
 
 ### Phase 2 — CONTEXT
 
@@ -226,7 +228,7 @@ Build review context:
 Run `code-graph-analyzer` **sequentially** (wait for result before starting Phase 3). This provides cross-file dependency context unavailable from the diff alone.
 
 Pass to the agent:
-- LOGIC and SECURITY files identified in Phase 1.5 (exclude DOCS/CONFIG/TEST)
+- `${LOGIC_FILES[@]}` and `${SECURITY_FILES[@]}` arrays from Phase 1.5 (excludes DOCS/CONFIG/TEST)
 - Cache key: `pr-<number>-<first8charsOfHeadSha>` for PR mode; `local-<sha8>` for local diff mode (use `git rev-parse --short HEAD`)
 
 The agent checks `.claude/code-graph/<cache_key>-impact-map.md` first — returns cached map if the SHA matches. Otherwise computes L2 import dependencies and L3 co-change risk, then writes to `.claude/code-graph/`.
@@ -326,6 +328,14 @@ Special cases:
 - Draft PR (GitHub only) → Always use **COMMENT** (not approve/block). Note: Bitbucket Cloud has no draft state — states are OPEN/MERGED/DECLINED/SUPERSEDED only.
 - Only docs/config changes → Lighter review, focus on correctness
 - Explicit `--approve` or `--request-changes` flag → Override decision (but still report all findings)
+
+**Count findings by severity** and store for Phase 6.5:
+```bash
+CRITICAL_COUNT=<number of CRITICAL findings>
+HIGH_COUNT=<number of HIGH findings>
+MEDIUM_COUNT=<number of MEDIUM findings>
+LOW_COUNT=<number of LOW findings>
+```
 
 ### Phase 6 — REPORT
 
