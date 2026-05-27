@@ -916,7 +916,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
       </div>
 
       <h3>Step 3.5 — Verification Pass</h3>
-      <p>並行 agents 完成後，所有 HIGH 與 CRITICAL finding 自動送入 <code>verification-reviewer</code> 執行二次確認（三道關卡驗證）。只有通過確認的 finding 才會進入最終報告；CRITICAL 不可被移除，最多降為 HIGH。</p>
+      <p>並行 agents 完成後，所有 HIGH 與 CRITICAL finding 自動送入 <code>verification-reviewer</code> 執行二次確認（三道關卡驗證）。<strong>CONFIRMED</strong> finding 及 UNCERTAIN（降為 MEDIUM）的 finding 均進入最終報告；若本 PR diff 已修復問題，以「FIXED IN THIS PR」verdict 移除（不受 CRITICAL 保護限制）；CRITICAL finding 不可被完全移除，最多降為 HIGH。</p>
 
       <h3>Walkthrough &amp; Effort Score</h3>
       <p>每次 <code>/review-pr</code> 輸出前先產生 Walkthrough 摘要，包含逐檔變更說明與 PR 複雜度評分：</p>
@@ -988,7 +988,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         <div class="agent-dot" style="background:#b05a00"></div>
         <div class="agent-body">
           <div class="agent-name">verification-reviewer</div>
-          <div class="agent-desc">驗證 agent，對 HIGH / CRITICAL finding 執行二次確認（三道關卡：<code>grep -Fn</code> 確認程式碼存在、確認失敗場景可重現、檢查現有 guard 是否已覆蓋）。不產生新 finding；CRITICAL finding 永不移除，最多降為 HIGH，任何 agent 提出的 CRITICAL 均受此保護。由 <code>/review-pr</code> Step 3.5 自動調用。</div>
+          <div class="agent-desc">驗證 agent，對 HIGH / CRITICAL finding 執行二次確認（三道關卡：<code>grep -Fn</code> 確認程式碼存在、確認失敗場景可重現、檢查現有 guard 是否已覆蓋）。不產生新 finding。CONFIRMED 及 UNCERTAIN（降為 MEDIUM）finding 均保留；若問題已在本 PR diff 中修復，以「FIXED IN THIS PR」verdict 移除（不受 CRITICAL 保護限制）；CRITICAL finding 最多降為 HIGH，永不完全移除。由 <code>/review-pr</code> Step 3.5 自動調用。</div>
           <div class="agent-pills">
             <span class="pill pill-model">Sonnet</span>
             <span class="pill">Read · Grep · Glob · Bash</span>
