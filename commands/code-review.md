@@ -125,7 +125,8 @@ Build review context:
 4. **Changed files** — List all modified files and categorize by type (source, test, config, docs)
 5. **Caller tracing** — For each modified exported function, class, or method in the diff, find and read its call sites:
    ```bash
-   grep -r "SymbolName" --include="*.{ts,tsx,js,jsx,py,go,rs}" -l . | head -10
+   grep -r "SymbolName" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+     --include="*.py" --include="*.go" --include="*.rs" -l . | head -10
    ```
    Read **3–5 most relevant callers**. Document any that make behavioral assumptions about the changed code (return type, thrown errors, side effects). Skip private/internal symbols used only within the same file.
 6. **Static analysis — run before review, capture as context** — Execute fast linters and type checker now. Do not fail on findings; treat output as signals for Phase 3:

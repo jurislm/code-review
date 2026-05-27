@@ -40,7 +40,8 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    - Read `CLAUDE.md`, lint config, TypeScript config, repo conventions
    - For each modified exported function, class, or method identified in the diff, trace its callers:
      ```bash
-     grep -r "SymbolName" --include="*.{ts,tsx,js,jsx,py,go,rs}" -l . | head -10
+     grep -r "SymbolName" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+       --include="*.py" --include="*.go" --include="*.rs" -l . | head -10
      ```
      Read **3–5 most relevant call sites**. Flag any caller that makes assumptions about the changed behavior (return type, side effects, throw contract). Skip private helpers and test-only symbols.
    - Run fast static analysis and capture output as context for the parallel agents:
