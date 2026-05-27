@@ -13,6 +13,21 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
 
 ## Steps
 
+**Skip-if-unchanged check** — run this first before any step. If the PR HEAD has not changed since the last review, exit early:
+
+```bash
+LAST_COMMIT_FILE=".claude/reviews/pr-<NUMBER>-last-commit.txt"
+CURRENT_HEAD=$(gh pr view <NUMBER> --json headRefOid --jq '.headRefOid')
+if [ -f "$LAST_COMMIT_FILE" ]; then
+  LAST_COMMIT=$(cat "$LAST_COMMIT_FILE")
+  if [ "$LAST_COMMIT" = "$CURRENT_HEAD" ]; then
+    echo "No new commits since last review. Nothing to do."
+    exit 0
+  fi
+  echo "New commits detected ($LAST_COMMIT → $CURRENT_HEAD). Running full review."
+fi
+```
+
 1. Identify the PR and detect platform:
    - URL contains `bitbucket.org` → use Bitbucket REST API (`curl -u "$BB_USERNAME:$BB_APP_PASSWORD"`)
    - URL contains `github.com` or no URL → use `gh pr view`
@@ -20,7 +35,7 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
 
    **GitHub:**
    ```bash
-   gh pr view [number] --json number,title,body,author,baseRefName,headRefName,changedFiles
+   gh pr view [number] --json number,title,body,author,baseRefName,headRefName,headRefOid,changedFiles
    gh pr diff [number]
    # Fetch linked issues for PR intent context (Fixes/Closes/Resolves/Related to #N)
    # Extracts all #N on each matching line (handles "Fixes #1, #2" correctly)
@@ -42,7 +57,7 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    **File classification** — Classify each changed file and populate lists for Step 2.5:
 
    ```bash
-   CHANGED_FILES=$(gh pr diff <NUMBER> --name-only)
+   CHANGED_FILES=$(gh pr diff <NUMBER> --name-only | tr -d '\r')
    LOGIC_FILES=()
    SECURITY_FILES=()
    while IFS= read -r file; do
@@ -110,7 +125,15 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
 
 3. Run specialized review agents in parallel:
 
-   **Focus filtering** — `code-reviewer` always runs as the anchor agent. When `--focus` is specified, run only the mapped subset:
+   **Focus filtering** — `code-reviewer` always runs as the anchor agent. When `--focus` is specified, validate the value first:
+
+   ```
+   Valid --focus values: comments | tests | errors | types | code | simplify
+   If the provided value is not in this list, stop and report:
+     "Unknown --focus value '<value>'. Valid options: comments, tests, errors, types, code, simplify"
+   ```
+
+   When `--focus` is a valid value, run only the mapped subset:
 
    | `--focus` value | Agents to run |
    |---|---|
@@ -132,7 +155,12 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    - `code-simplifier`
    - `pr-walkthrough-writer` — generates structured walkthrough and Mermaid sequence diagram (skip when `--focus` is set); **store its full output as `WALKTHROUGH_OUTPUT`**
 
-3.5. **Verification pass** — Launch `verification-reviewer` with all HIGH and CRITICAL findings from Step 3. Wait for its output before proceeding. Only carry forward findings that survive verification (CONFIRMED status). CRITICAL findings from any agent are never dropped by this pass — they may be demoted to HIGH but not removed.
+3.5. **Verification pass** — Launch `verification-reviewer` with all HIGH and CRITICAL findings from Step 3. Wait for its output before proceeding. Carry forward:
+   - All **CONFIRMED** findings at their original or verified severity.
+   - **UNCERTAIN** findings that verification-reviewer demoted to MEDIUM (these survive as MEDIUM — do not discard them).
+   - All **CRITICAL** findings regardless of verdict — they may be demoted to HIGH but are never removed.
+
+   Discard only findings marked INVALID or FALSE POSITIVE (unless originally CRITICAL, which are demoted to HIGH instead).
 
 4. Verify and aggregate results:
 
@@ -268,8 +296,13 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    # APPROVE — zero CRITICAL/HIGH, all validation passes
    gh pr review <NUMBER> --approve --body "$REVIEW_BODY"
 
-   # BLOCK — any CRITICAL findings (prepend ⛔ BLOCK header to $REVIEW_BODY when CRITICAL_COUNT > 0)
+   # BLOCK — any CRITICAL findings
    # GitHub has no native BLOCK review state — use REQUEST CHANGES with a prominent ⛔ BLOCK header
+   if [ "$CRITICAL_COUNT" -gt 0 ]; then
+     REVIEW_BODY="⛔ BLOCK — This PR must not be merged until all CRITICAL issues are resolved.
+
+$REVIEW_BODY"
+   fi
    gh pr review <NUMBER> --request-changes --body "$REVIEW_BODY"
 
    # REQUEST CHANGES — any HIGH or validation failure (no CRITICAL)
@@ -344,28 +377,19 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
 
 8. Report findings grouped by severity
 
-9. **Save HEAD commit for incremental tracking** — **Only run if Step 6b completed successfully** (the `gh pr review` command returned exit code 0). If Step 6b failed, skip this so the next run retries from scratch.
+9. **Save HEAD commit for incremental tracking** — Only run if Step 6b completed successfully.
 
    ```bash
-   mkdir -p .claude/reviews
-   gh pr view <NUMBER> --json headRefOid --jq '.headRefOid' \
-     > ".claude/reviews/pr-<NUMBER>-last-commit.txt"
-   ```
-
-   Add the following skip-if-unchanged check at the very start of this command (before Step 1), so repeated runs on unchanged PRs return early:
-
-   ```bash
-   LAST_COMMIT_FILE=".claude/reviews/pr-<NUMBER>-last-commit.txt"
-   CURRENT_HEAD=$(gh pr view <NUMBER> --json headRefOid --jq '.headRefOid')
-   if [ -f "$LAST_COMMIT_FILE" ]; then
-     LAST_COMMIT=$(cat "$LAST_COMMIT_FILE")
-     if [ "$LAST_COMMIT" = "$CURRENT_HEAD" ]; then
-       echo "No new commits since last review. Nothing to do."
-       exit 0
-     fi
-     echo "New commits detected ($LAST_COMMIT → $CURRENT_HEAD). Running full review."
+   if gh pr review <NUMBER> --approve --body "" 2>/dev/null || gh pr review <NUMBER> --request-changes --body "" 2>/dev/null; then
+     # Step 6b succeeded — record the reviewed commit
+     mkdir -p .claude/reviews
+     gh pr view <NUMBER> --json headRefOid --jq '.headRefOid' \
+       > ".claude/reviews/pr-<NUMBER>-last-commit.txt"
    fi
    ```
+
+   > In practice, capture the exit code of the Step 6b `gh pr review` call (e.g. `REVIEW_EXIT=$?`) and gate this step with `if [ "$REVIEW_EXIT" -eq 0 ]`. If Step 6b failed, skip this step so the next run retries from scratch.
+
 
 ## Confidence Rule
 

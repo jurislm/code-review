@@ -39,7 +39,7 @@ echo "CACHE_MISS — computing fresh map"
 mkdir -p .claude/code-graph
 ```
 
-If cache hit, return the cached content immediately. Do not recompute.
+**⚠️ CACHE HIT — if the bash block above printed "CACHE_HIT", return the cached content now and stop. Do NOT proceed to Steps 2–5.**
 
 ## Step 2 — L2: Import Dependency Tracing (one BFS hop)
 
@@ -62,41 +62,42 @@ BASENAME=$(basename "<changed_file>" | sed 's/\.[^.]*$//')
 EXCLUDE="--exclude-dir=node_modules --exclude-dir=.git --exclude-dir=__tests__ --exclude=*.test.* --exclude=*.spec.*"
 
 # JS/TS: quoted import specifiers (ES modules + require)
-grep -rn "from.*['\"].*${BASENAME}['\"]" \
+# Require BASENAME to be the last path component: preceded by / or opening quote
+grep -rn "from.*['\"].*[/'\"]${BASENAME}['\"]" \
   --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
   $EXCLUDE . 2>/dev/null | head -20 || true
-grep -rn "require.*['\"].*${BASENAME}['\"]" \
+grep -rn "require.*['\"].*[/'\"]${BASENAME}['\"]" \
   --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
   $EXCLUDE . 2>/dev/null | head -10 || true
 
-# Python: import BASENAME / from BASENAME import
-grep -rn "^\(import\|from\) .*${BASENAME}" \
+# Python: import BASENAME / from BASENAME import (word-boundary anchored)
+grep -rn "^\(import\|from\) .*\b${BASENAME}\b" \
   --include="*.py" $EXCLUDE . 2>/dev/null | head -10 || true
 
-# Java / Kotlin: import com.example.BASENAME
-grep -rn "import .*\.${BASENAME}" \
+# Java / Kotlin: import com.example.BASENAME (anchored at end of identifier)
+grep -rn "import .*\.${BASENAME}\b" \
   --include="*.java" --include="*.kt" $EXCLUDE . 2>/dev/null | head -10 || true
 
 # Go: uses the directory path, not basename — skip (Go imports are path-based, not name-based)
 
-# Rust: use crate::...::BASENAME
-grep -rn "use .*::${BASENAME}" \
+# Rust: use crate::...::BASENAME (anchored at end of identifier)
+grep -rn "use .*::${BASENAME}\b" \
   --include="*.rs" $EXCLUDE . 2>/dev/null | head -10 || true
 
 # Swift: import BASENAME (module-level only)
-grep -rn "^import ${BASENAME}" \
+grep -rn "^import ${BASENAME}$" \
   --include="*.swift" $EXCLUDE . 2>/dev/null | head -10 || true
 
-# C#: using BASENAME / using ...BASENAME
-grep -rn "using .*${BASENAME}" \
+# C#: using BASENAME / using ...BASENAME (anchored at end of identifier)
+grep -rn "using .*\b${BASENAME}\b" \
   --include="*.cs" $EXCLUDE . 2>/dev/null | head -10 || true
 
-# Ruby: require / require_relative with BASENAME
-grep -rn "require.*['\"].*${BASENAME}['\"]" \
+# Ruby: require / require_relative with BASENAME (last path component)
+grep -rn "require.*['\"].*[/'\"]${BASENAME}['\"]" \
   --include="*.rb" $EXCLUDE . 2>/dev/null | head -10 || true
 
-# PHP: use / require / include with BASENAME
-grep -rn "\(use\|require\|include\).*${BASENAME}" \
+# PHP: use / require / include with BASENAME (word-boundary anchored)
+grep -rn "\(use\|require\|include\).*\b${BASENAME}\b" \
   --include="*.php" $EXCLUDE . 2>/dev/null | head -10 || true
 ```
 

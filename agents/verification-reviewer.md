@@ -50,7 +50,9 @@ grep -Fn -- "exact_pattern_from_finding" path/to/file | head -10 || true
 # Use the Read tool: path/to/file, offset=(line-30), limit=60
 ```
 
-Confirm the code described in the finding actually exists at that location. Record the command you ran and what it returned. If grep returns 0 matches, or the Read output shows different code than described → **INVALID immediately** (no further gates needed).
+Confirm the code described in the finding actually exists at that location. Record the command you ran and what it returned.
+
+- If grep returns 0 matches, or the Read output shows different code than described: check whether the diff contains a hunk that **fixes** the cited pattern (i.e., the issue was real but is resolved by this PR). If yes → **FIXED IN THIS PR** (remove entirely, see Demotion Rules). If the code simply never existed → **INVALID immediately** (no further gates needed).
 
 > **Why -F**: grep treats patterns as regex by default. Finding descriptions often contain `[`, `(`, `*`, `.`, `?` from type annotations or function calls — these are regex metacharacters that silently cause 0 matches and trigger false INVALID demotions. `-F` matches the literal string exactly.
 
@@ -110,8 +112,9 @@ Evidence: <what you found that contradicts the finding>
 
 | Verdict | Meaning | Action |
 |---------|---------|--------|
-| INVALID | Code doesn't match description or already fixed | If original severity is CRITICAL → demote to HIGH (never remove); otherwise remove entirely |
-| UNCERTAIN | Failure scenario not concretely triggerable | If original severity is CRITICAL → demote to HIGH (never remove); if HIGH → downgrade to MEDIUM if concern is real; otherwise remove if speculative |
+| INVALID | Code doesn't match description | If original severity is CRITICAL → demote to HIGH (never remove); otherwise remove entirely |
+| FIXED IN THIS PR | Issue existed but is already resolved by another hunk in this same diff | Always remove regardless of severity — the PR itself is the fix; note "Fixed in this PR" in your demoted output |
+| UNCERTAIN | Failure scenario not concretely triggerable | If original severity is CRITICAL → demote to HIGH (never remove); if HIGH → downgrade to MEDIUM **only if** the underlying code pattern is objectively risky (e.g. missing null check on a value that can be null, unvalidated external input, unhandled error path) — not merely because the trigger is unclear; otherwise remove if the mechanism itself is speculative |
 | FALSE POSITIVE | Existing guard already handles it | If original severity is CRITICAL → demote to HIGH (never remove); otherwise remove entirely |
 
 **CRITICAL findings are never removed** — they may be demoted to HIGH but must always appear in output. This applies regardless of which agent raised the finding.

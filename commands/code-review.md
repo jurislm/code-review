@@ -138,7 +138,7 @@ fi
 **File classification**: Route between Fast Path and Slow Path:
 
 ```bash
-CHANGED_FILES=$(gh pr diff <NUMBER> --name-only)
+CHANGED_FILES=$(gh pr diff <NUMBER> --name-only | tr -d '\r')
 FAST_ONLY=true
 LOGIC_FILES=""
 SECURITY_FILES=""
@@ -166,7 +166,7 @@ done <<< "$CHANGED_FILES"
 **Fast Path** (only DOCS + CONFIG + OTHER — zero LOGIC/SECURITY files):
 - Skip Phases 2, 3, 4, and 5 entirely
 - Run **secret scan only**: execute the static analysis / secret scan commands from Phase 2 Step 6 (linters + credential patterns)
-- If zero secrets or credentials found: APPROVE with brief note "Docs/config changes — no logic review needed", then proceed directly to Phase 6
+- If zero secrets or credentials found: post `gh pr review --approve` with brief note "Docs/config changes — no logic review needed" (Phase 7b), then proceed to Phase 8 (skip Phases 6 and 6.5)
 - If a secret/credential is detected: exit Fast Path and run the full Slow Path from Phase 2 onwards
 
 **Slow Path** (any LOGIC or SECURITY file present): proceed to Phase 2 normally.
@@ -224,6 +224,12 @@ Build review context:
 
    Store this output. Any `file:line` flagged here → review that location with elevated priority in Phase 3.
 
+7. **CI check status** — Read the current CI check results to surface known failures as review context:
+   ```bash
+   gh pr checks <NUMBER> 2>/dev/null | head -30
+   ```
+   If any checks are failing, note them at the top of Phase 3 with `⚠️ CI failing: <check_name>` and treat the related code paths as elevated-priority review areas. Do not block the review — just elevate priority.
+
 ### Phase 2.5 — CODE GRAPH
 
 Run `code-graph-analyzer` **sequentially** (wait for result before starting Phase 3). This provides cross-file dependency context unavailable from the diff alone.
@@ -237,12 +243,6 @@ The agent checks `.claude/code-graph/<cache_key>-impact-map.md` first — return
 **Store the returned markdown as `IMPACT_MAP`.** Pass it as context to Phase 3 review, annotating findings that involve files mentioned in the "High-risk dependents" or "Missing co-changes" sections with elevated priority.
 
 If `code-graph-analyzer` returns an error or times out, proceed to Phase 3 without impact map context — do not block the review.
-
-7. **CI check status** — Read the current CI check results to surface known failures as review context:
-   ```bash
-   gh pr checks <NUMBER> 2>/dev/null | head -30
-   ```
-   If any checks are failing, note them at the top of Phase 3 with `⚠️ CI failing: <check_name>` and treat the related code paths as elevated-priority review areas. Do not block the review — just elevate priority.
 
 ### Phase 3 — REVIEW
 
@@ -335,7 +335,8 @@ Special cases:
 CRITICAL_COUNT=<number of CRITICAL findings>
 HIGH_COUNT=<number of HIGH findings>
 MEDIUM_COUNT=<number of MEDIUM findings>
-LOW_COUNT=<number of LOW findings>
+LOW_COUNT=<number of LOW and NITPICK findings>
+LOW_NITPICK_LIST=<formatted markdown list of all LOW and NITPICK findings>
 ```
 
 ### Phase 6 — REPORT
@@ -479,7 +480,16 @@ Include MEDIUM findings (assertive profile only). Also include HIGH findings bey
 # APPROVE — zero CRITICAL/HIGH issues, validation passes
 gh pr review <NUMBER> --approve --body "$REVIEW_BODY"
 
-# REQUEST CHANGES — any HIGH issues or validation failures
+# BLOCK — any CRITICAL findings
+# GitHub has no native BLOCK review state — use REQUEST CHANGES with a prominent ⛔ BLOCK header
+if [ "$CRITICAL_COUNT" -gt 0 ]; then
+  REVIEW_BODY="⛔ BLOCK — This PR must not be merged until all CRITICAL issues are resolved.
+
+$REVIEW_BODY"
+fi
+gh pr review <NUMBER> --request-changes --body "$REVIEW_BODY"
+
+# REQUEST CHANGES — any HIGH issues or validation failures (no CRITICAL)
 gh pr review <NUMBER> --request-changes --body "$REVIEW_BODY"
 
 # COMMENT — draft PR or informational
@@ -520,10 +530,12 @@ Save current HEAD commit for incremental review tracking (next review will only 
 **Only write this file if Phase 7 completed successfully** (the `gh pr review` command in Step 7b returned exit code 0). If Phase 7 failed for any reason (network error, expired token, API error), skip writing this file so the next run retries from scratch rather than silently skipping the PR.
 
 ```bash
-# Only run if Phase 7 succeeded
-mkdir -p .claude/reviews
-gh pr view <NUMBER> --json headRefOid --jq '.headRefOid' \
-  > ".claude/reviews/pr-<NUMBER>-last-commit.txt"
+# Capture the exit code of the Phase 7b gh pr review call (set REVIEW_EXIT=$? immediately after it)
+if [ "${REVIEW_EXIT:-1}" -eq 0 ]; then
+  mkdir -p .claude/reviews
+  gh pr view <NUMBER> --json headRefOid --jq '.headRefOid' \
+    > ".claude/reviews/pr-<NUMBER>-last-commit.txt"
+fi
 ```
 
 ---
