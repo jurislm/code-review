@@ -82,7 +82,7 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
 
 3. Run specialized review agents in parallel:
    - `code-reviewer`
-   - `security-reviewer` — OWASP Top 10 analysis; CRITICAL findings are never dropped by verification pass
+   - `security-reviewer` — OWASP Top 10 analysis
    - `comment-analyzer`
    - `pr-test-analyzer`
    - `silent-failure-hunter`
@@ -90,13 +90,13 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    - `code-simplifier`
    - `pr-walkthrough-writer` — generates structured walkthrough and Mermaid sequence diagram
 
-3.5. **Verification pass** — Launch `verification-reviewer` with all HIGH and CRITICAL findings from Step 3. Wait for its output before proceeding. Only carry forward findings that survive verification (CONFIRMED status). CRITICAL findings from `security-reviewer` are never dropped by this pass — they may be demoted to HIGH but not removed.
+3.5. **Verification pass** — Launch `verification-reviewer` with all HIGH and CRITICAL findings from Step 3. Wait for its output before proceeding. Only carry forward findings that survive verification (CONFIRMED status). CRITICAL findings from any agent are never dropped by this pass — they may be demoted to HIGH but not removed.
 
 4. Verify and aggregate results:
 
    **Step 4a — Deduplicate**: Group findings by file + approximate line. Keep only one instance per issue.
 
-   **Step 4b — Contradiction filter**: If two agents flag the same code for opposite reasons, or one flags while another explicitly approves, require ≥ 2 agents in agreement before including. **Exception**: CRITICAL-severity findings from `security-reviewer` are always included regardless of agent agreement count.
+   **Step 4b — Contradiction filter**: If two agents flag the same code for opposite reasons, or one flags while another explicitly approves, require ≥ 2 agents in agreement before including. **Exception**: CRITICAL-severity findings from any agent are always included regardless of agent agreement count.
 
    **Step 4c — Confidence filter**: Drop findings framed as "might", "possibly", or "consider" unless CRITICAL severity. Only report findings with ≥ 80% confidence.
 
