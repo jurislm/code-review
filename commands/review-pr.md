@@ -22,6 +22,10 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    ```bash
    gh pr view [number] --json number,title,body,author,baseRefName,headRefName,changedFiles
    gh pr diff [number]
+   # Fetch linked issues for PR intent context (Fixes/Closes/Resolves/Related to #N)
+   gh pr view [number] --json body --jq '.body' | \
+     grep -oP '(?i)(?:Fixes|Closes|Resolves|Related to)\s+#\K\d+' | sort -u | \
+     xargs -I{} gh issue view {} --json number,title,body 2>/dev/null
    ```
 
    **Bitbucket:**
@@ -43,9 +47,20 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    - `type-design-analyzer`
    - `code-simplifier`
 
-4. Aggregate results:
-   - dedupe overlapping findings
-   - rank by severity
+4. Verify and aggregate results:
+
+   **Step 4a — Deduplicate**: Group findings by file + approximate line. Keep only one instance per issue.
+
+   **Step 4b — Contradiction filter**: If two agents flag the same code for opposite reasons, or one flags while another explicitly approves, require ≥ 2 agents in agreement before including.
+
+   **Step 4c — Confidence filter**: Drop findings framed as "might", "possibly", or "consider" unless CRITICAL severity. Only report findings with ≥ 80% confidence.
+
+   **Step 4d — False positive guard**:
+   - Magic numbers in test fixtures or well-named constants → skip
+   - Fire-and-forget patterns in tests or logging → skip
+   - Style suggestions not agreed by ≥ 2 agents → downgrade to LOW or omit
+
+   **Step 4e — Rank**: CRITICAL → HIGH → MEDIUM → LOW
 
 5. Post results back to PR:
    - **GitHub**: `gh pr review [number] --approve|--request-changes|--comment --body "..."`

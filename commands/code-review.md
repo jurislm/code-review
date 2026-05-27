@@ -1,6 +1,6 @@
 ---
 description: Code review — local uncommitted changes or GitHub/Bitbucket PR (pass PR number/URL for PR mode)
-argument-hint: [pr-number | pr-url | blank for local review]
+argument-hint: [pr-number | pr-url | --from=<commit> | blank for local review]
 ---
 
 # Code Review
@@ -15,6 +15,9 @@ argument-hint: [pr-number | pr-url | blank for local review]
 
 If `$ARGUMENTS` is blank:
 → Use **Local Review Mode**.
+
+If `$ARGUMENTS` contains `--from=<commit>`:
+→ Use **Incremental Local Review Mode** — same as Local Review Mode but only reviews files changed since `<commit>` (e.g. `--from=main`, `--from=HEAD~3`, `--from=abc1234`).
 
 If `$ARGUMENTS` contains a PR number, PR URL, or `--pr`:
 
@@ -34,8 +37,14 @@ Comprehensive security and quality review of uncommitted changes.
 ### Phase 1 — GATHER
 
 ```bash
+# Full local review (default — no --from flag)
 git diff --name-only HEAD
+
+# Incremental review (--from=<commit> specified)
+git diff --name-only <commit>..HEAD
 ```
+
+Use the incremental form when `--from=<commit>` is specified; pass the same `<commit>` ref to `git diff` in Phase 2 as well.
 
 If no changed files, stop: "Nothing to review."
 
@@ -106,7 +115,13 @@ Build review context:
 
 1. **Project rules** — Read `CLAUDE.md`, `.claude/docs/`, and any contributing guidelines
 2. **Planning artifacts** — Check `.claude/prds/`, `.claude/plans/`, `.claude/reviews/`, and legacy `.claude/PRPs/{prds,plans,reports,reviews}/` for context related to this PR
-3. **PR intent** — Parse PR description for goals, linked issues, test plans
+3. **PR intent** — Parse PR description for goals, linked issues, test plans. Explicitly fetch any linked issues:
+   ```bash
+   gh pr view <NUMBER> --json body --jq '.body' | \
+     grep -oP '(?i)(?:Fixes|Closes|Resolves|Related to)\s+#\K\d+' | sort -u | \
+     xargs -I{} gh issue view {} --json number,title,body 2>/dev/null
+   ```
+   Include issue title and description as review context — understanding PR intent reduces false positives.
 4. **Changed files** — List all modified files and categorize by type (source, test, config, docs)
 
 ### Phase 3 — REVIEW
