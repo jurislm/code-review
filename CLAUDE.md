@@ -73,6 +73,7 @@ GitHub 用戶無需額外設定（使用 `gh` CLI）。
 `plugin.json` 和 `marketplace.json` 的版本由 `release-please-config.json` 的 `extra-files` **自動同步**——Release Please 合入 release PR 時更新 main 分支。
 
 ⚠️ **develop 分支需手動跟上**：每次 Release Please release PR 合入 main 後，執行 `git merge origin/main` 將版本 bump 同步回 develop。
+觸發時機：`git log origin/main --oneline -3` 若出現 `chore(main): release v...` commit，即代表需要同步。
 驗證指令：`grep '"version"' .claude-plugin/plugin.json .claude-plugin/marketplace.json`
 
 ## Agent Frontmatter 建議欄位
@@ -129,12 +130,14 @@ Landing page 是純 HTML，直接編輯 `docs/index.html`。push 到 `main` 後 
 修改 agent / command / skill 後，commit 前先驗：
 
 ```bash
-# 重新載入 plugin（若已透過 /plugin 安裝本 repo）
-/reload-plugins
-
 # 快速確認 agent frontmatter 格式（name/description/color 必填）
 grep -l "^---" agents/*.md | xargs -I{} head -10 {}
+
+# 驗證各類別實際數量（與 CLAUDE.md 計數一致）
+echo "agents: $(ls agents/*.md | wc -l | tr -d ' '), commands: $(ls commands/*.md | wc -l | tr -d ' '), skills: $(ls -d skills/*/ | wc -l | tr -d ' ')"
 ```
+
+修改後在 Claude Code 中執行（非 shell 指令）：`/reload-plugins`
 
 commit checklist：
 - [ ] 更新 `README.md` 對應表格
