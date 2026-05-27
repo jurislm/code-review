@@ -66,7 +66,7 @@ GitHub 用戶無需額外設定（使用 `gh` CLI）。
 | `docs:` | 純格式或標點，無實質內容改動 | 無 |
 | `chore:` | manifest 更新、README 格式 | 無 |
 
-⚠️ 錯用 `docs:` 更新 agent 內容 → Release Please 不會發布新版本。
+⚠️ 錯用 `docs:` 更新 agent 內容 → `docs:` 雖會進 CHANGELOG，但不觸發版本 bump（不建立 release PR）。
 
 ## 版本同步
 
@@ -143,7 +143,7 @@ commit checklist：
 - [ ] 更新 `README.md` 對應表格
 - [ ] 更新 `docs/index.html` stats 數字
 - [ ] 更新本 `CLAUDE.md` 的計數（Agents 清單 / Commands 清單）
-- [ ] commit type 用 `feat:`（非 `docs:`）才會觸發 Release Please
+- [ ] 實質內容變更用 `feat:` 或 `fix:`（非 `docs:`）— 只有這兩者才觸發版本 bump
 
 ## 設計原則（勿破壞）
 

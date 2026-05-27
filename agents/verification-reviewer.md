@@ -43,7 +43,7 @@ For each HIGH or CRITICAL finding, run the three-gate check:
 
 ```bash
 # Option A: grep to confirm the exact pattern exists at the cited location
-grep -n "exact_pattern_from_finding" path/to/file | head -10
+grep -n "exact_pattern_from_finding" path/to/file | head -10 || true
 
 # Option B: Read the file around the cited line (±30 lines)
 # Use the Read tool: path/to/file, offset=(line-30), limit=60
@@ -68,7 +68,7 @@ If you cannot answer all three with evidence from the code, **demote to UNCERTAI
 # Search for existing guards — substitute the actual function/variable name from the finding
 grep -r "FunctionName\|guardPattern" \
   --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
-  --include="*.py" --include="*.go" --include="*.rs" -n . | head -20
+  --include="*.py" --include="*.go" --include="*.rs" -n . | head -20 || true
 ```
 
 Trace what the grep found:

@@ -120,10 +120,10 @@ If PR not found, stop with error. Store PR metadata for later phases.
 **Incremental review detection**: Check if this PR was previously reviewed and only process new commits:
 
 ```bash
-LAST_COMMIT_FILE=".claude/reviews/pr-${NUMBER}-last-commit.txt"
+LAST_COMMIT_FILE=".claude/reviews/pr-<NUMBER>-last-commit.txt"
 if [ -f "$LAST_COMMIT_FILE" ]; then
   LAST_COMMIT=$(cat "$LAST_COMMIT_FILE")
-  CURRENT_HEAD=$(gh pr view $NUMBER --json headRefOid --jq '.headRefOid')
+  CURRENT_HEAD=$(gh pr view <NUMBER> --json headRefOid --jq '.headRefOid')
   if [ "$LAST_COMMIT" = "$CURRENT_HEAD" ]; then
     echo "No new commits since last review. Nothing to do."
     exit 0
@@ -131,7 +131,7 @@ if [ -f "$LAST_COMMIT_FILE" ]; then
   echo "Incremental review: covering commits since $LAST_COMMIT"
   REVIEW_MODE="INCREMENTAL"
 else
-  echo "Full review (first time for PR #$NUMBER)"
+  echo "Full review (first time for PR #<NUMBER>)"
   REVIEW_MODE="FULL"
 fi
 # LAST_COMMIT_FILE is written at the end of Phase 8
@@ -178,7 +178,7 @@ Build review context:
    ```bash
    [ -f ".claude/review-paths.yaml" ] && cat ".claude/review-paths.yaml"
    ```
-   For each changed file, find the most specific matching `pattern` and include its `rules` in the review prompt for that file. Files matching a `skip` list have those check categories suppressed. Example schema:
+   This is an **optional, user-created** file (not bundled with the plugin). If present, find the most specific matching `pattern` for each changed file and include its `rules` in the review prompt. Files matching a `skip` list have those check categories suppressed. Example schema to create in your project:
    ```yaml
    paths:
      - pattern: "src/api/**"
