@@ -164,10 +164,12 @@ App Password 建立：Bitbucket → Settings → Personal settings → App passw
 
 ```
 /review-pr 123
-/review-pr 123 --focus security
-/review-pr 123 --focus performance
-/review-pr 123 --focus types
+/review-pr 123 --focus comments
 /review-pr 123 --focus tests
+/review-pr 123 --focus errors
+/review-pr 123 --focus types
+/review-pr 123 --focus code
+/review-pr 123 --focus simplify
 ```
 
 ### 4. 語言專項 Review
@@ -283,6 +285,8 @@ Skills 會根據任務上下文自動啟動，無需手動呼叫。
 3. **零 finding 合法** — clean code → APPROVE，不強行挑毛病
 4. **HIGH/CRITICAL 三要素** — 精確行號 + 具體失敗場景 + 現有 guard 為何不夠
 5. **False positive 過濾** — 明確排除 LLM reviewer 常見誤判（magic number、fire-and-forget、test fixture 等）
+6. **Verification gate** — `/review-pr` Step 3.5 由 `verification-reviewer` 對所有 HIGH/CRITICAL finding 執行三道關卡二次確認；CRITICAL finding 不可被完全移除，最多降為 HIGH
+7. **NITPICK 分層** — 純風格偏好歸類為 NITPICK；`--profile=chill` 時略過 MEDIUM/LOW/NITPICK，`--profile=assertive`（預設）時顯示所有等級
 
 ---
 
