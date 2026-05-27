@@ -1,6 +1,6 @@
 ---
 description: Comprehensive PR review using specialized agents (GitHub & Bitbucket)
-argument-hint: [pr-number | pr-url] [--focus security|performance|types|tests]
+argument-hint: [pr-number | pr-url] [--focus comments|tests|errors|types|code|simplify]
 ---
 
 Run a comprehensive multi-perspective review of a pull request.

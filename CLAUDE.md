@@ -166,6 +166,9 @@ commit checklist：
 - `code-graph-analyzer`（cyan）— L2 import dependency + L3 co-change 風險圖；在並行 agents 前執行，結果快取於 `.claude/code-graph/`
 
 ### `/review-pr` 協作（6 個）
+
+> `/review-pr` 並行 8 agent = `code-reviewer` + `security-reviewer`（通用主審）+ 下列 6 個
+
 - `comment-analyzer` · `pr-test-analyzer` · `silent-failure-hunter` · `type-design-analyzer` · `code-simplifier` · `pr-walkthrough-writer`
 
 ### 語言 / 框架專項（17 個）
