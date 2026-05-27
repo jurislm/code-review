@@ -901,7 +901,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
           <thead><tr><th>Agent</th><th>負責範圍</th></tr></thead>
           <tbody>
             <tr><td><code>code-reviewer</code></td><td>整體品質、安全性、可維護性，含 false positive 過濾</td></tr>
-            <tr><td><code>security-reviewer</code></td><td>OWASP Top 10 分析；CRITICAL finding 不可被 verification pass 移除</td></tr>
+            <tr><td><code>security-reviewer</code></td><td>OWASP Top 10 分析；injection、SSRF、硬編碼 secrets、unsafe crypto</td></tr>
             <tr><td><code>comment-analyzer</code></td><td>行內 comment 準確性、完整性、rot 風險</td></tr>
             <tr><td><code>pr-test-analyzer</code></td><td>測試覆蓋率、行為涵蓋、真實 bug 防護</td></tr>
             <tr><td><code>silent-failure-hunter</code></td><td>swallowed error、ignored promise、錯誤傳遞缺失</td></tr>
@@ -1187,6 +1187,8 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         <li><strong>零 finding 合法</strong> — clean code 應該得到 APPROVE，不強行挑毛病。</li>
         <li><strong>HIGH / CRITICAL 三要素</strong> — 精確行號 + 具體失敗場景 + 現有 guard 為何不夠，缺一不可。</li>
         <li><strong>False positive 過濾</strong> — 明確排除 LLM reviewer 常見誤判，包含：magic number（有命名常數時）、fire-and-forget（設計如此時）、test fixture（測試資料不算 magic number）、未修改的程式碼（除非 CRITICAL 安全問題）。</li>
+        <li><strong>Verification gate</strong> — <code>/review-pr</code> Step 3.5 由 <code>verification-reviewer</code> 對所有 HIGH / CRITICAL finding 執行三道關卡二次確認。CRITICAL finding 不可被完全移除，最多降為 HIGH。</li>
+        <li><strong>NITPICK 分層</strong> — 純風格偏好歸類為 NITPICK；<code>--profile=chill</code> 時略過 MEDIUM / LOW / NITPICK，<code>--profile=assertive</code>（預設）時顯示所有等級。</li>
       </ol>
     </section>
 
