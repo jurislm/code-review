@@ -239,6 +239,12 @@ Create review artifact at `.claude/reviews/pr-<NUMBER>-review.md`:
 **Branch**: <head> → <base>
 **Decision**: APPROVE | REQUEST CHANGES | BLOCK
 
+## Walkthrough
+
+| File | Change | Summary |
+|------|--------|---------|
+| `<file>` | Added / Modified / Deleted | <one-sentence description of what changed and why> |
+
 ## Summary
 <1-2 sentence overall assessment>
 

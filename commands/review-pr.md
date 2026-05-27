@@ -77,11 +77,23 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
 
    **Step 4e — Rank**: CRITICAL → HIGH → MEDIUM → LOW
 
-5. Post results back to PR:
+5. Produce walkthrough summary (output this before findings):
+
+   ```markdown
+   ## Walkthrough
+
+   | File | Change | Summary |
+   |------|--------|---------|
+   | `<file>` | Added / Modified / Deleted | <one-sentence description of what changed and why> |
+   ```
+
+   One row per changed file. Keep each summary to one sentence. This gives reviewers an at-a-glance map of the PR scope before they read any findings.
+
+6. Post results back to PR:
    - **GitHub**: `gh pr review [number] --approve|--request-changes|--comment --body "..."`
    - **Bitbucket**: `curl -X POST .../approve` or `.../request-changes`, plus `.../comments` for summary
 
-6. Report findings grouped by severity
+7. Report findings grouped by severity
 
 ## Confidence Rule
 
