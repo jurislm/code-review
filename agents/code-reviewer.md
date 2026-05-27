@@ -27,9 +27,9 @@ When invoked:
 
    **Caller Tracing** (required for any modified exported function, method, or class):
    ```bash
-   # Find all files that reference the changed symbol — adapt extension list to the project's language
+   # -n outputs file:line:match so you can directly locate and read the 3–5 most relevant callers
    grep -r "SymbolName" --include="*.ts" --include="*.tsx" \
-     --include="*.js" --include="*.py" --include="*.go" --include="*.rs" -l . | head -10
+     --include="*.js" --include="*.py" --include="*.go" --include="*.rs" -n . | head -20
    ```
    Read the **3–5 most relevant callers**. Look for:
    - Callers that assume specific return types, argument shapes, or throw behavior

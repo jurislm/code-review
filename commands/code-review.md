@@ -50,7 +50,7 @@ git diff --name-only HEAD
 git diff --name-only <commit>
 ```
 
-Use the incremental form when `--from=<commit>` is specified; pass the same `<commit>` ref to `git diff` in Phase 2 as well.
+Use the incremental form when `--from=<commit>` is specified. In subsequent phases, use `git diff <commit>` (not `git diff <commit>..HEAD`) wherever a diff is needed — this includes any uncommitted working tree changes relative to `<commit>`, matching the Local Review Mode behaviour.
 
 If no changed files, stop: "Nothing to review."
 
@@ -123,28 +123,31 @@ Build review context:
 2. **Planning artifacts** — Check `.claude/prds/`, `.claude/plans/`, `.claude/reviews/`, and legacy `.claude/PRPs/{prds,plans,reports,reviews}/` for context related to this PR
 3. **PR intent** — Parse PR description for goals, linked issues, test plans. Explicitly fetch any linked issues:
    ```bash
+   # Extracts all #N on each matching line (handles "Fixes #1, #2" correctly)
    gh pr view <NUMBER> --json body --jq '.body' | \
-     perl -ne 'print "$1\n" if /(?:Fixes|Closes|Resolves|Related to)\s+#(\d+)/i' | sort -u | \
-     while read num; do gh issue view "$num" --json number,title,body 2>/dev/null; done
+     perl -ne 'while (/(?:Fixes|Closes|Resolves|Related to)[^#]*#(\d+)/gi) { print "$1\n" }' | sort -u | \
+     while read -r num; do gh issue view "$num" --json number,title,body 2>/dev/null; done
    ```
    Include issue title and description as review context — understanding PR intent reduces false positives.
 4. **Changed files** — List all modified files and categorize by type (source, test, config, docs)
 5. **Caller tracing** — For each modified exported function, class, or method in the diff, find and read its call sites:
    ```bash
+   # -n outputs file:line:match, making it easy to pick the 3–5 most relevant callers
    grep -r "SymbolName" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
-     --include="*.py" --include="*.go" --include="*.rs" -l . | head -10
+     --include="*.py" --include="*.go" --include="*.rs" -n . | head -20
    ```
    Read **3–5 most relevant callers**. Document any that make behavioral assumptions about the changed code (return type, thrown errors, side effects). Skip private/internal symbols used only within the same file.
 6. **Static analysis — run before review, capture as context** — Execute fast linters and type checker now. Do not fail on findings; treat output as signals for Phase 3:
 
    **Node.js / TypeScript:**
    ```bash
-   npx tsc --noEmit 2>&1 | head -60
-   npm run lint -- --format=compact 2>&1 | head -60
+   # Append || true so pipefail environments don't abort context collection
+   npx tsc --noEmit 2>&1 | head -60 || true
+   npm run lint -- --format=compact 2>&1 | head -60 || true
    ```
-   **Rust:** `cargo clippy 2>&1 | head -60`
-   **Go:** `go vet ./... 2>&1 | head -60`
-   **Python:** `ruff check . 2>&1 | head -60`
+   **Rust:** `cargo clippy 2>&1 | head -60 || true`
+   **Go:** `go vet ./... 2>&1 | head -60 || true`
+   **Python:** `ruff check . 2>&1 | head -60 || true`
 
    Store this output. Any `file:line` flagged here → review that location with elevated priority in Phase 3.
 

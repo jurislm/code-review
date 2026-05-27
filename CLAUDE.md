@@ -66,15 +66,17 @@ GitHub 用戶無需額外設定（使用 `gh` CLI）。
 ⚠️ **develop 分支需手動跟上**：每次 Release Please release PR 合入 main 後，執行 `git merge origin/main` 將版本 bump 同步回 develop。
 驗證指令：`grep '"version"' .claude-plugin/plugin.json .claude-plugin/marketplace.json`
 
-## Agent Frontmatter 必填欄位
+## Agent Frontmatter 建議欄位
+
+最低必填：`name`、`description`、`color`。`tools` 和 `model` 建議明確指定以確保一致行為。
 
 ```yaml
 ---
-name: <kebab-case>
-description: <一句話描述，用於 PROACTIVELY 觸發條件>
-tools: [Read, Grep, Glob]   # 按需加 Bash, Write, Edit
-model: sonnet               # 預設 sonnet；特殊：healthcare-reviewer 用 opus
-color: green                # green/blue/yellow/magenta/red/orange/purple/cyan/gray
+name: <kebab-case>           # 必填
+description: <一句話描述，用於 PROACTIVELY 觸發條件>  # 必填
+tools: [Read, Grep, Glob]   # 建議；按需加 Bash, Write, Edit
+model: sonnet               # 建議；預設 sonnet；特殊：healthcare-reviewer 用 opus
+color: green                # 必填；green/blue/yellow/magenta/red/orange/purple/cyan/gray
 ---
 ```
 

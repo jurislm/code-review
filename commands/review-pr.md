@@ -23,9 +23,10 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    gh pr view [number] --json number,title,body,author,baseRefName,headRefName,changedFiles
    gh pr diff [number]
    # Fetch linked issues for PR intent context (Fixes/Closes/Resolves/Related to #N)
+   # Extracts all #N on each matching line (handles "Fixes #1, #2" correctly)
    gh pr view [number] --json body --jq '.body' | \
-     perl -ne 'print "$1\n" if /(?:Fixes|Closes|Resolves|Related to)\s+#(\d+)/i' | sort -u | \
-     while read num; do gh issue view "$num" --json number,title,body 2>/dev/null; done
+     perl -ne 'while (/(?:Fixes|Closes|Resolves|Related to)[^#]*#(\d+)/gi) { print "$1\n" }' | sort -u | \
+     while read -r num; do gh issue view "$num" --json number,title,body 2>/dev/null; done
    ```
 
    **Bitbucket:**
@@ -40,18 +41,20 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    - Read `CLAUDE.md`, lint config, TypeScript config, repo conventions
    - For each modified exported function, class, or method identified in the diff, trace its callers:
      ```bash
+     # -n outputs file:line:match, making it easy to pick the 3–5 most relevant call sites
      grep -r "SymbolName" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
-       --include="*.py" --include="*.go" --include="*.rs" -l . | head -10
+       --include="*.py" --include="*.go" --include="*.rs" -n . | head -20
      ```
      Read **3–5 most relevant call sites**. Flag any caller that makes assumptions about the changed behavior (return type, side effects, throw contract). Skip private helpers and test-only symbols.
    - Run fast static analysis and capture output as context for the parallel agents:
      ```bash
+     # Append || true so pipefail environments don't abort context collection
      # Node.js/TS
-     npx tsc --noEmit 2>&1 | head -60
-     npm run lint -- --format=compact 2>&1 | head -60
-     # Rust: cargo clippy 2>&1 | head -60
-     # Go:   go vet ./... 2>&1 | head -60
-     # Python: ruff check . 2>&1 | head -60
+     npx tsc --noEmit 2>&1 | head -60 || true
+     npm run lint -- --format=compact 2>&1 | head -60 || true
+     # Rust: cargo clippy 2>&1 | head -60 || true
+     # Go:   go vet ./... 2>&1 | head -60 || true
+     # Python: ruff check . 2>&1 | head -60 || true
      ```
      Pass linter output alongside the diff when launching each agent in Step 3.
 
