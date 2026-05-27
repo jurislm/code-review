@@ -152,7 +152,8 @@ while IFS= read -r file; do
       echo "TEST: $file" ;;
     *auth*|*crypto*|*token*|*password*|*session*|*jwt*|*oauth*|*secret*)
       echo "SECURITY: $file"; SECURITY_FILES+=("$file"); FAST_ONLY=false ;;
-    *.ts|*.tsx|*.js|*.jsx|*.py|*.go|*.rs|*.kt|*.swift|*.java|*.cs|*.rb|*.php)
+    *.ts|*.tsx|*.js|*.jsx|*.py|*.go|*.rs|*.kt|*.swift|*.java|*.cs|*.rb|*.php|\
+*.cpp|*.cc|*.c|*.h|*.hpp|*.dart|*.scala|*.ex|*.exs|*.lua|*.vue|*.svelte)
       echo "LOGIC: $file"; LOGIC_FILES+=("$file"); FAST_ONLY=false ;;
     *)
       echo "OTHER: $file" ;;

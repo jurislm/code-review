@@ -162,7 +162,7 @@ App Password 建立：Bitbucket → Settings → Personal settings → App passw
 
 同時啟動 8 個專項 agent，confidence < 80% 的 finding 自動過濾：
 
-```
+```bash
 /review-pr 123
 /review-pr 123 --focus comments
 /review-pr 123 --focus tests
