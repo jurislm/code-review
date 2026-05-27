@@ -705,7 +705,7 @@
           <div class="stat-label">Confidence Gate</div>
         </div>
         <div class="stat-item">
-          <div class="stat-num" data-count="7">7</div>
+          <div class="stat-num" data-count="8">8</div>
           <div class="stat-label">Parallel PR Agents</div>
         </div>
       </div>
@@ -901,11 +901,13 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
           <thead><tr><th>Agent</th><th>負責範圍</th></tr></thead>
           <tbody>
             <tr><td><code>code-reviewer</code></td><td>整體品質、安全性、可維護性，含 false positive 過濾</td></tr>
+            <tr><td><code>security-reviewer</code></td><td>OWASP Top 10 分析；CRITICAL finding 不可被 verification pass 移除</td></tr>
             <tr><td><code>comment-analyzer</code></td><td>行內 comment 準確性、完整性、rot 風險</td></tr>
             <tr><td><code>pr-test-analyzer</code></td><td>測試覆蓋率、行為涵蓋、真實 bug 防護</td></tr>
             <tr><td><code>silent-failure-hunter</code></td><td>swallowed error、ignored promise、錯誤傳遞缺失</td></tr>
             <tr><td><code>type-design-analyzer</code></td><td>型別封裝、invariant 表達、強制性</td></tr>
             <tr><td><code>code-simplifier</code></td><td>過度複雜實作、重複抽象、可讀性</td></tr>
+            <tr><td><code>pr-walkthrough-writer</code></td><td>結構化 PR walkthrough + Mermaid sequence diagram；產出作為 PR 第一則 comment</td></tr>
           </tbody>
         </table>
       </div>

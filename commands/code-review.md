@@ -416,7 +416,7 @@ Post the review to GitHub using severity-based delivery (three steps):
 **Step 7a — Inline comments for CRITICAL/HIGH** (post individually, max 10; excess joins the summary table in Step 7b):
 
 For each CRITICAL/HIGH finding with a specific `file:line`, build the comment:
-```
+```text
 **[{SEVERITY}] {issue_title}**
 
 {concrete_failure_scenario}
@@ -424,7 +424,7 @@ For each CRITICAL/HIGH finding with a specific `file:line`, build the comment:
 **Why existing guards don't catch it:** {guard_gap}
 ```
 If the fix is a single-line replacement, append a committable suggestion block so the author can apply it with one click:
-````
+````markdown
 ```suggestion
 {fixed_line_content}
 ```
@@ -441,6 +441,8 @@ gh api "repos/{owner}/{repo}/pulls/<NUMBER>/comments" \
 ```
 
 **Step 7b — Main review body** (MEDIUM findings as table + overall decision):
+
+> **Profile gate**: if `--profile=chill` was specified, skip the MEDIUM section entirely — include only the severity summary counts and the overall decision. Proceed directly to the `gh pr review` command without listing MEDIUM findings.
 
 Build `$REVIEW_BODY`:
 ```markdown
@@ -459,7 +461,7 @@ Build `$REVIEW_BODY`:
 |---|---|---|
 | `file:line` | description | fix |
 ```
-Include MEDIUM findings. Also include HIGH findings beyond the 10-inline limit.
+Include MEDIUM findings (assertive profile only). Also include HIGH findings beyond the 10-inline limit.
 
 ```bash
 # APPROVE — zero CRITICAL/HIGH issues, validation passes
@@ -473,6 +475,8 @@ gh pr review <NUMBER> --comment --body "$REVIEW_BODY"
 ```
 
 **Step 7c — Collapsible LOW/NITPICK** (if any; posted as a separate final comment):
+
+> **Profile gate**: skip Step 7c entirely when `--profile=chill` — LOW and NITPICK findings are suppressed.
 
 ```bash
 gh pr review <NUMBER> --comment --body "<details>

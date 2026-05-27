@@ -72,7 +72,7 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    **Store the returned markdown as `IMPACT_MAP`.**
 
    When launching each parallel agent in Step 3, prepend the following to their prompt:
-   ```
+   ```text
    [IMPACT MAP — use as additional context when reviewing cross-file risk; do not repeat verbatim in your findings]
    <IMPACT_MAP content>
    [END IMPACT MAP]
@@ -156,7 +156,7 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    **6a — Inline comments for CRITICAL/HIGH** (post individually, max 10; excess joins the summary table in 6b):
 
    For each CRITICAL/HIGH finding with a specific `file:line`, build the comment:
-   ```
+   ```text
    **[{SEVERITY}] {issue_title}**
 
    {concrete_failure_scenario}
@@ -164,7 +164,7 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    **Why existing guards don't catch it:** {guard_gap}
    ```
    If the fix is a single-line replacement, append a committable suggestion block so the author can apply it with one click:
-   ````
+   ````markdown
    ```suggestion
    {fixed_line_content}
    ```

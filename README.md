@@ -160,7 +160,7 @@ App Password 建立：Bitbucket → Settings → Personal settings → App passw
 
 ### 3. 多 Agent 並行 PR Review
 
-同時啟動 6 個專項 agent，confidence < 80% 的 finding 自動過濾：
+同時啟動 8 個專項 agent，confidence < 80% 的 finding 自動過濾：
 
 ```
 /review-pr 123
