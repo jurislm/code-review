@@ -403,9 +403,8 @@ SUMMARY_BLOCK="<!-- cr-summary:start -->
 **Reviewed**: $(date +%Y-%m-%d) · **Findings**: ${CRITICAL_COUNT} critical · ${HIGH_COUNT} high · ${MEDIUM_COUNT} medium
 <!-- cr-summary:end -->"
 
-gh pr edit <NUMBER> --body "${STRIPPED}
-
-${SUMMARY_BLOCK}"
+printf '%s\n\n%s' "$STRIPPED" "$SUMMARY_BLOCK" \
+  | gh pr edit <NUMBER> --body-file -
 ```
 
 > Skip this phase for Bitbucket (REST API does not support PR description updates via the same CLI workflow).

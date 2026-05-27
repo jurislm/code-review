@@ -83,10 +83,10 @@ For each changed file, find files that historically changed together in the last
 ```bash
 FILE="<changed_file>"
 git log --pretty=format:"---COMMIT---" --name-only -n 50 -- "$FILE" 2>/dev/null | \
-  python3 -c "
-import sys
+  FILE="$FILE" python3 -c "
+import sys, os
 from collections import Counter
-target = '$FILE'
+target = os.environ['FILE']
 data = sys.stdin.read()
 commits = data.split('---COMMIT---')
 co_changed = Counter()
