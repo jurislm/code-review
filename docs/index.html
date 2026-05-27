@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Code Review Plugin — Technical Documentation</title>
-  <meta name="description" content="25-agent code review ecosystem for Claude Code — complete technical reference for commands, agents, and skills." />
+  <meta name="description" content="26-agent code review ecosystem for Claude Code — complete technical reference for commands, agents, and skills." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Nunito:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -681,7 +681,7 @@
 
       <div class="badges">
         <span class="badge badge-gray">MIT License</span>
-        <span class="badge badge-lime">25 Agents</span>
+        <span class="badge badge-lime">26 Agents</span>
         <span class="badge badge-blue">9 Commands</span>
         <span class="badge badge-purple">3 Skills</span>
         <span class="badge badge-gray">Claude Code Plugin</span>
@@ -1040,6 +1040,15 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
           <div class="agent-name">code-simplifier</div>
           <div class="agent-desc">找出過度複雜的實作，提出簡化方案。在保留行為的前提下，改善清晰度、一致性與可維護性，不引入不必要的抽象。</div>
           <div class="agent-pills"><span class="pill pill-model">Sonnet</span><span class="pill">Read · Write · Edit · Bash · Grep · Glob</span></div>
+        </div>
+      </div>
+
+      <div class="agent-card" style="--agent-color: #1a5fa8">
+        <div class="agent-dot" style="background:#1a5fa8"></div>
+        <div class="agent-body">
+          <div class="agent-name">pr-walkthrough-writer</div>
+          <div class="agent-desc">生成結構化 PR walkthrough：file-change 表格 + Mermaid sequence diagram（僅限 ≤10 個 LOGIC 檔案且流程清晰時）。作為 /review-pr 並行 agent 之一，產出的內容作為 PR 第一則獨立 comment。</div>
+          <div class="agent-pills"><span class="pill pill-model">Sonnet</span><span class="pill">Read · Grep · Glob · Bash</span></div>
         </div>
       </div>
     </section>

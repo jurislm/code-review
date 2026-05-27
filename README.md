@@ -16,8 +16,8 @@
 
 | | |
 |---|---|
-| 🤖 **25 個 Reviewer Agent** | TypeScript · Python · Go · Rust · Java · Kotlin · Swift · C++ · C# · F# · Django · FastAPI · Flutter · DB · Healthcare · ML + Verification |
-| ⚡ **六 Agent 並行 + Verification Pass** | `/review-pr` 同時啟動 6 個專項 agent；HIGH/CRITICAL finding 由 `verification-reviewer` 二次確認後才輸出 |
+| 🤖 **26 個 Reviewer Agent** | TypeScript · Python · Go · Rust · Java · Kotlin · Swift · C++ · C# · F# · Django · FastAPI · Flutter · DB · Healthcare · ML + Verification + PR Walkthrough |
+| ⚡ **七 Agent 並行 + Verification Pass** | `/review-pr` 同時啟動 7 個專項 agent（含 `pr-walkthrough-writer`）；HIGH/CRITICAL finding 由 `verification-reviewer` 二次確認後才輸出 |
 | 🔗 **雙平台 PR Review** | 自動偵測 GitHub（`gh` CLI）或 Bitbucket Cloud（REST API v2.0） |
 | 🔒 **多層安全掃描** | OWASP Top 10 · PHI/HIPAA · Claude Code 設定掃描 |
 | 🎯 **高信心原則** | 只報告 >80% 確信的問題，零 finding = APPROVE，不製造雜訊 |
@@ -47,7 +47,7 @@
 # 審查 Bitbucket PR
 /code-review https://bitbucket.org/workspace/repo/pull-requests/123
 
-# 六 agent 並行 PR review
+# 七 agent 並行 PR review
 /review-pr 123
 ```
 
@@ -59,7 +59,7 @@
 code-review plugin
 ├── Commands（9 個 slash commands）
 │   ├── /code-review          本地 diff 或 PR review
-│   ├── /review-pr            六 agent 並行 + --focus 過濾
+│   ├── /review-pr            七 agent 並行 + --focus 過濾
 │   └── /python-review ... /flutter-review  語言專項
 │
 ├── Agents（25 個 reviewer agents）
@@ -72,7 +72,8 @@ code-review plugin
 │   │   ├── pr-test-analyzer  測試覆蓋
 │   │   ├── silent-failure-hunter  swallowed error 偵測
 │   │   ├── type-design-analyzer  型別設計
-│   │   └── code-simplifier   過度複雜實作
+│   │   ├── code-simplifier   過度複雜實作
+│   │   └── pr-walkthrough-writer  Walkthrough + Mermaid diagram
 │   └── 語言 / 框架專項（17 個）
 │       TypeScript · Python · Go · Rust · C++ · C# · Java
 │       Kotlin · Swift · F# · Django · FastAPI · Flutter
@@ -201,7 +202,7 @@ App Password 建立：Bitbucket → Settings → Personal settings → App passw
 | 指令 | 說明 |
 |------|------|
 | `/code-review` | 本地 review 或 PR review（傳 PR 號/URL） |
-| `/review-pr` | 六 agent 並行 PR review，支援 `--focus` |
+| `/review-pr` | 七 agent 並行 PR review，支援 `--focus` |
 | `/python-review` | Python 專項 review |
 | `/go-review` | Go 專項 review |
 | `/rust-review` | Rust 專項 review |
@@ -231,6 +232,7 @@ App Password 建立：Bitbucket → Settings → Personal settings → App passw
 | `silent-failure-hunter` | 🔵 cyan | 偵測 swallowed error、ignored promise |
 | `type-design-analyzer` | 🔵 cyan | 型別設計審查 |
 | `code-simplifier` | 🔵 cyan | 找過度複雜的實作 |
+| `pr-walkthrough-writer` | 🔵 blue | 生成結構化 PR walkthrough 與 Mermaid sequence diagram |
 
 ### 語言 / 框架專項
 

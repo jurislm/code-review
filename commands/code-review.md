@@ -115,11 +115,81 @@ gh pr diff <NUMBER>
 
 If PR not found, stop with error. Store PR metadata for later phases.
 
+### Phase 1.5 — CLASSIFY
+
+**Incremental review detection**: Check if this PR was previously reviewed and only process new commits:
+
+```bash
+LAST_COMMIT_FILE=".claude/reviews/pr-${NUMBER}-last-commit.txt"
+if [ -f "$LAST_COMMIT_FILE" ]; then
+  LAST_COMMIT=$(cat "$LAST_COMMIT_FILE")
+  CURRENT_HEAD=$(gh pr view $NUMBER --json headRefOid --jq '.headRefOid')
+  if [ "$LAST_COMMIT" = "$CURRENT_HEAD" ]; then
+    echo "No new commits since last review. Nothing to do."
+    exit 0
+  fi
+  echo "Incremental review: covering commits since $LAST_COMMIT"
+  REVIEW_MODE="INCREMENTAL"
+else
+  echo "Full review (first time for PR #$NUMBER)"
+  REVIEW_MODE="FULL"
+fi
+# LAST_COMMIT_FILE is written at the end of Phase 8
+```
+
+**File classification**: Route between Fast Path and Slow Path:
+
+```bash
+CHANGED_FILES=$(gh pr diff <NUMBER> --name-only)
+FAST_ONLY=true
+while IFS= read -r file; do
+  case "$file" in
+    *.md|*.txt|*.rst|*.adoc|CHANGELOG*|LICENSE*|README*)
+      echo "DOCS: $file" ;;
+    *.json|*.yaml|*.yml|*.toml|*package-lock*|*.lock|*.sum)
+      echo "CONFIG: $file" ;;
+    *test*|*spec*|*__tests__*|*.test.*|*.spec.*)
+      echo "TEST: $file" ;;
+    *auth*|*crypto*|*token*|*password*|*session*|*jwt*|*oauth*|*secret*)
+      echo "SECURITY: $file"; FAST_ONLY=false ;;
+    *.ts|*.tsx|*.js|*.jsx|*.py|*.go|*.rs|*.kt|*.swift|*.java|*.cs|*.rb|*.php)
+      echo "LOGIC: $file"; FAST_ONLY=false ;;
+    *)
+      echo "OTHER: $file" ;;
+  esac
+done <<< "$CHANGED_FILES"
+```
+
+**Fast Path** (only DOCS + CONFIG + OTHER — zero LOGIC/SECURITY files):
+- Skip Phases 2–5 (context building and deep review)
+- Run only Phase 2 Step 6 (static analysis / secret scan)
+- If zero credentials or secrets found: APPROVE with brief note "Docs/config changes — no logic review needed"
+- If a secret/credential is detected: escalate to full Slow Path immediately
+
+**Slow Path** (any LOGIC or SECURITY file present): proceed to Phase 2 normally.
+
+**SECURITY files**: in Phase 3, pass these filenames explicitly to `security-reviewer` for prioritized analysis.
+
 ### Phase 2 — CONTEXT
 
 Build review context:
 
-1. **Project rules** — Read `CLAUDE.md`, `.claude/docs/`, and any contributing guidelines
+1. **Project rules** — Read `CLAUDE.md`, `.claude/docs/`, and any contributing guidelines. Also load path-based review rules if present:
+   ```bash
+   [ -f ".claude/review-paths.yaml" ] && cat ".claude/review-paths.yaml"
+   ```
+   For each changed file, find the most specific matching `pattern` and include its `rules` in the review prompt for that file. Files matching a `skip` list have those check categories suppressed. Example schema:
+   ```yaml
+   paths:
+     - pattern: "src/api/**"
+       focus: security
+       rules: ["All public endpoints must require authentication", "Rate limiting required on POST"]
+     - pattern: "src/db/**"
+       focus: performance
+       rules: ["No queries without LIMIT", "No string concatenation in SQL"]
+     - pattern: "**/*.test.ts"
+       skip: [magic_numbers, function_length, console_log]
+   ```
 2. **Planning artifacts** — Check `.claude/prds/`, `.claude/plans/`, `.claude/reviews/`, and legacy `.claude/PRPs/{prds,plans,reports,reviews}/` for context related to this PR
 3. **PR intent** — Parse PR description for goals, linked issues, test plans. Explicitly fetch any linked issues:
    ```bash
@@ -291,29 +361,113 @@ Create review artifact at `.claude/reviews/pr-<NUMBER>-review.md`:
 <list of files with change type: Added/Modified/Deleted>
 ```
 
-### Phase 7 — PUBLISH
+### Phase 6.5 — UPDATE PR DESCRIPTION
 
-Post the review to GitHub:
+Auto-append a structured review summary to the PR description. Idempotent — strips any previously generated block before appending:
 
 ```bash
-# If APPROVE
-gh pr review <NUMBER> --approve --body "<summary of review>"
+CURRENT_BODY=$(gh pr view <NUMBER> --json body --jq '.body')
 
-# If REQUEST CHANGES
-gh pr review <NUMBER> --request-changes --body "<summary with required fixes>"
+STRIPPED=$(echo "$CURRENT_BODY" | python3 -c "
+import sys, re
+body = sys.stdin.read()
+body = re.sub(r'<!-- cr-summary:start -->.*?<!-- cr-summary:end -->', '', body, flags=re.DOTALL).strip()
+print(body)
+")
 
-# If COMMENT only (draft PR or informational)
-gh pr review <NUMBER> --comment --body "<summary>"
+SUMMARY_BLOCK="<!-- cr-summary:start -->
+
+---
+## 📋 Code Review Summary
+
+| Category | Files |
+|---|---|
+| Logic / Feature | <logic_files> |
+| Tests | <test_files> |
+| Config / Docs | <config_doc_files> |
+
+**Reviewed**: $(date +%Y-%m-%d) · **Findings**: ${CRITICAL_COUNT} critical · ${HIGH_COUNT} high · ${MEDIUM_COUNT} medium
+<!-- cr-summary:end -->"
+
+gh pr edit <NUMBER> --body "${STRIPPED}
+
+${SUMMARY_BLOCK}"
 ```
 
-For inline comments on specific lines:
+> Skip this phase for Bitbucket (REST API does not support PR description updates via the same CLI workflow).
+
+### Phase 7 — PUBLISH
+
+Post the review to GitHub using severity-based delivery (three steps):
+
+**Step 7a — Inline comments for CRITICAL/HIGH** (post individually, max 10; excess joins the summary table in Step 7b):
+
+For each CRITICAL/HIGH finding with a specific `file:line`, build the comment:
+```
+**[{SEVERITY}] {issue_title}**
+
+{concrete_failure_scenario}
+
+**Why existing guards don't catch it:** {guard_gap}
+```
+If the fix is a single-line replacement, append a committable suggestion block so the author can apply it with one click:
+````
+```suggestion
+{fixed_line_content}
+```
+````
+
 ```bash
+HEAD_SHA=$(gh pr view <NUMBER> --json headRefOid --jq .headRefOid)
 gh api "repos/{owner}/{repo}/pulls/<NUMBER>/comments" \
-  -f body="<comment>" \
+  -f body="$COMMENT_BODY" \
   -f path="<file>" \
-  -F line=<line-number> \
+  -F line=<line_number> \
   -f side="RIGHT" \
-  -f commit_id="$(gh pr view <NUMBER> --json headRefOid --jq .headRefOid)"
+  -f commit_id="$HEAD_SHA"
+```
+
+**Step 7b — Main review body** (MEDIUM findings as table + overall decision):
+
+Build `$REVIEW_BODY`:
+```markdown
+## 📊 Review Summary
+
+| Severity | Count |
+|---|---|
+| 🔴 CRITICAL | {n} |
+| 🟠 HIGH | {n} |
+| 🟡 MEDIUM | {n} |
+| 🔵 LOW | {n} |
+
+## ⚠️ Issues Requiring Attention
+
+| File:Line | Issue | Suggested Fix |
+|---|---|---|
+| `file:line` | description | fix |
+```
+Include MEDIUM findings. Also include HIGH findings beyond the 10-inline limit.
+
+```bash
+# APPROVE — zero CRITICAL/HIGH issues, validation passes
+gh pr review <NUMBER> --approve --body "$REVIEW_BODY"
+
+# REQUEST CHANGES — any HIGH issues or validation failures
+gh pr review <NUMBER> --request-changes --body "$REVIEW_BODY"
+
+# COMMENT — draft PR or informational
+gh pr review <NUMBER> --comment --body "$REVIEW_BODY"
+```
+
+**Step 7c — Collapsible LOW/NITPICK** (if any; posted as a separate final comment):
+
+```bash
+gh pr review <NUMBER> --comment --body "<details>
+<summary>🔵 Low Priority / Style Suggestions (${LOW_COUNT})</summary>
+
+${LOW_NITPICK_LIST}
+
+</details>"
 ```
 
 ### Phase 8 — OUTPUT
@@ -330,6 +484,14 @@ Validation: <pass_count>/<total_count> checks passed
 Artifacts:
   Review: .claude/reviews/pr-<NUMBER>-review.md
   GitHub: <PR URL>
+```
+
+Save current HEAD commit for incremental review tracking (next review will only process new commits):
+
+```bash
+mkdir -p .claude/reviews
+gh pr view <NUMBER> --json headRefOid --jq '.headRefOid' \
+  > ".claude/reviews/pr-<NUMBER>-last-commit.txt"
 ```
 
 ---
@@ -436,10 +598,33 @@ Create review artifact at `.claude/reviews/pr-<ID>-review.md` using the same for
 
 ### Phase 7 — PUBLISH
 
-Post review result to Bitbucket:
+Post review result to Bitbucket using severity-based delivery:
+
+**Step 7a — Inline comments for CRITICAL/HIGH** (max 10; excess joins Step 7b):
 
 ```bash
-# Post overall review comment (all cases)
+# For each CRITICAL/HIGH finding — build comment body first
+COMMENT_BODY="**[{SEVERITY}] {issue_title}**\n\n{failure_scenario}\n\n**Why existing guards don't catch it:** {guard_gap}"
+
+# Added/modified line → use "to"
+curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+  -H "Content-Type: application/json" \
+  -d "{\"content\":{\"raw\":\"$COMMENT_BODY\"},\"inline\":{\"path\":\"$FILEPATH\",\"to\":$LINE_NUMBER}}" \
+  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
+
+# Removed line → use "from"
+curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+  -H "Content-Type: application/json" \
+  -d "{\"content\":{\"raw\":\"$COMMENT_BODY\"},\"inline\":{\"path\":\"$FILEPATH\",\"from\":$LINE_NUMBER}}" \
+  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
+```
+
+**Step 7b — Main review comment** (MEDIUM table + approve/request-changes decision):
+
+Build `$REVIEW_SUMMARY` as a Markdown table of MEDIUM findings plus HIGH overflow, then post:
+
+```bash
+# Post summary comment (all cases)
 curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   -H "Content-Type: application/json" \
   -d "{\"content\": {\"raw\": \"$REVIEW_SUMMARY\"}}" \
@@ -454,18 +639,13 @@ curl -s -o /dev/null -w "%{http_code}" -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD
   "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/request-changes"
 ```
 
-For inline comments on specific lines:
-```bash
-# 新增行（新版本的行號）→ 用 "to"
-curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
-  -H "Content-Type: application/json" \
-  -d "{\"content\":{\"raw\":\"$COMMENT\"},\"inline\":{\"path\":\"$FILEPATH\",\"to\":$LINE_NUMBER}}" \
-  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
+**Step 7c — Low priority findings** (if any; Bitbucket has no HTML folding — use plain format):
 
-# 刪除行（舊版本的行號）→ 用 "from"
+```bash
+LOW_BODY="**Low Priority / Style Suggestions (${LOW_COUNT}):**\n\n${LOW_NITPICK_LIST}"
 curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   -H "Content-Type: application/json" \
-  -d "{\"content\":{\"raw\":\"$COMMENT\"},\"inline\":{\"path\":\"$FILEPATH\",\"from\":$LINE_NUMBER}}" \
+  -d "{\"content\": {\"raw\": \"$LOW_BODY\"}}" \
   "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
 ```
 

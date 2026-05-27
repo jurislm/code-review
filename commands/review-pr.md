@@ -65,6 +65,7 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    - `silent-failure-hunter`
    - `type-design-analyzer`
    - `code-simplifier`
+   - `pr-walkthrough-writer` — generates structured walkthrough and Mermaid sequence diagram
 
 3.5. **Verification pass** — Launch `verification-reviewer` with all HIGH and CRITICAL findings from Step 3. Wait for its output before proceeding. Only carry forward findings that survive verification (CONFIRMED status). CRITICAL findings from `security-reviewer` are never dropped by this pass — they may be demoted to HIGH but not removed.
 
@@ -83,30 +84,151 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
 
    **Step 4e — Rank**: CRITICAL → HIGH → MEDIUM → LOW
 
-5. Produce walkthrough summary (output this before findings):
+5. Post dedicated walkthrough comment — this is the **first** thing developers see, posted before any findings:
 
-   ```markdown
-   ## Walkthrough
+   **5a — Build walkthrough content:**
+
+   If `pr-walkthrough-writer` ran in Step 3, use its structured output directly. Otherwise generate inline using the rubric below.
+
+   Effort score rubric (1–5):
+   - **1** — Docs, config, or formatting only; no logic change
+   - **2** — Small bug fix or minor feature; 1–3 logic files
+   - **3** — Medium feature or refactor; 4–10 files, some logic complexity
+   - **4** — Complex refactor, core logic rewrite, or >10 files changed
+   - **5** — Architectural change, schema migration, auth system, or cross-cutting concern
+
+   Build a one-row-per-file table: file path, Added/Modified/Deleted, one-sentence summary of what changed and why.
+
+   **5b — Sequence diagram** (only when ≤10 files changed AND at least one non-test logic file is present):
+
+   Use the `pr-walkthrough-writer` diagram if generated. If generating inline, trace the main data flow through the diff (entry → processing → data layer) and render as Mermaid. If no clear multi-layer flow is discernible, **omit entirely** — do not force a diagram.
+
+   **5c — Post as first standalone comment:**
+
+   **GitHub:**
+   ```bash
+   WALKTHROUGH_BODY="## 🔍 PR Walkthrough
 
    **Review Effort**: <N>/5 — <label> (<brief reason>)
 
    | File | Change | Summary |
    |------|--------|---------|
-   | `<file>` | Added / Modified / Deleted | <one-sentence description of what changed and why> |
+   | \`<file>\` | Added/Modified/Deleted | <one-sentence summary> |
+
+   <mermaid_block_if_generated>"
+
+   gh pr review <NUMBER> --comment --body "$WALKTHROUGH_BODY"
    ```
 
-   **Effort score rubric** (1–5):
-   - **1** — Docs, config, or formatting only; no logic change
-   - **2** — Small bug fix or minor feature; 1–3 files
-   - **3** — Medium feature or refactor; 4–10 files, some logic complexity
-   - **4** — Complex refactor, core logic rewrite, or >10 files changed
-   - **5** — Architectural change, schema migration, auth system, or cross-cutting concern
+   **Bitbucket:**
+   ```bash
+   curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+     -H "Content-Type: application/json" \
+     -d "{\"content\": {\"raw\": \"## PR Walkthrough\n\n<walkthrough_content>\"}}" \
+     "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
+   ```
 
-   One row per changed file. Keep each summary to one sentence. This gives reviewers an at-a-glance map of the PR scope before they read any findings.
+6. Post findings with severity-based delivery (three steps):
 
-6. Post results back to PR:
-   - **GitHub**: `gh pr review [number] --approve|--request-changes|--comment --body "..."`
-   - **Bitbucket**: `curl -X POST .../approve` or `.../request-changes`, plus `.../comments` for summary
+   **6a — Inline comments for CRITICAL/HIGH** (post individually, max 10; excess joins the summary table in 6b):
+
+   For each CRITICAL/HIGH finding with a specific `file:line`, build the comment:
+   ```
+   **[{SEVERITY}] {issue_title}**
+
+   {concrete_failure_scenario}
+
+   **Why existing guards don't catch it:** {guard_gap}
+   ```
+   If the fix is a single-line replacement, append a committable suggestion block so the author can apply it with one click:
+   ````
+   ```suggestion
+   {fixed_line_content}
+   ```
+   ````
+
+   **GitHub:**
+   ```bash
+   HEAD_SHA=$(gh pr view <NUMBER> --json headRefOid --jq .headRefOid)
+   gh api "repos/{owner}/{repo}/pulls/<NUMBER>/comments" \
+     -f body="$COMMENT_BODY" \
+     -f path="<file>" \
+     -F line=<line_number> \
+     -f side="RIGHT" \
+     -f commit_id="$HEAD_SHA"
+   ```
+
+   **Bitbucket:**
+   ```bash
+   # Added/modified line → use "to"; removed line → use "from"
+   curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+     -H "Content-Type: application/json" \
+     -d "{\"content\":{\"raw\":\"$COMMENT_BODY\"},\"inline\":{\"path\":\"<file>\",\"to\":<line>}}" \
+     "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
+   ```
+
+   **6b — Main review body** (MEDIUM findings as table + APPROVE/REQUEST CHANGES decision):
+
+   Build `$REVIEW_BODY`:
+   ```markdown
+   ## 📊 Review Summary
+
+   | Severity | Count |
+   |---|---|
+   | 🔴 CRITICAL | {n} |
+   | 🟠 HIGH | {n} |
+   | 🟡 MEDIUM | {n} |
+   | 🔵 LOW | {n} |
+
+   ## ⚠️ Issues Requiring Attention
+
+   | File:Line | Issue | Suggested Fix |
+   |---|---|---|
+   | `file:line` | description | fix |
+   ```
+   Include: MEDIUM findings + any HIGH findings beyond the 10-inline limit.
+
+   **GitHub:**
+   ```bash
+   # APPROVE — zero CRITICAL/HIGH, all validation passes
+   gh pr review <NUMBER> --approve --body "$REVIEW_BODY"
+
+   # REQUEST CHANGES — any HIGH or validation failure
+   gh pr review <NUMBER> --request-changes --body "$REVIEW_BODY"
+
+   # COMMENT — draft PR
+   gh pr review <NUMBER> --comment --body "$REVIEW_BODY"
+   ```
+
+   **Bitbucket:**
+   ```bash
+   curl -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+     .../approve  # or .../request-changes
+   curl -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+     -H "Content-Type: application/json" \
+     -d "{\"content\":{\"raw\":\"$REVIEW_BODY\"}}" \
+     .../comments
+   ```
+
+   **6c — Collapsible LOW/NITPICK** (if any; posted as a separate final comment):
+
+   **GitHub:**
+   ```bash
+   gh pr review <NUMBER> --comment --body "<details>
+   <summary>🔵 Low Priority / Style Suggestions (${LOW_COUNT})</summary>
+
+   ${LOW_NITPICK_LIST}
+
+   </details>"
+   ```
+
+   **Bitbucket** (no HTML folding — plain format):
+   ```bash
+   curl -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+     -H "Content-Type: application/json" \
+     -d "{\"content\":{\"raw\":\"**Low Priority (${LOW_COUNT}):**\n\n${LOW_LIST}\"}}" \
+     .../comments
+   ```
 
 7. Report findings grouped by severity
 

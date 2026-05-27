@@ -39,11 +39,17 @@ For each HIGH or CRITICAL finding, run the three-gate check:
 
 ### Gate 1 — Read the Code
 
+**MANDATORY before writing any verdict**: Run at least one of these and record the output.
+
 ```bash
-# Read the flagged file at the specific line + surrounding context (±30 lines)
+# Option A: grep to confirm the exact pattern exists at the cited location
+grep -n "exact_pattern_from_finding" path/to/file | head -10
+
+# Option B: Read the file around the cited line (±30 lines)
+# Use the Read tool: path/to/file, offset=(line-30), limit=60
 ```
 
-Confirm the code described in the finding actually exists at that location. If the finding references the wrong line, wrong variable, or code that was already fixed, **demote to INVALID**.
+Confirm the code described in the finding actually exists at that location. Record the command you ran and what it returned. If grep returns 0 matches, or the Read output shows different code than described → **INVALID immediately** (no further gates needed).
 
 ### Gate 2 — Confirm the Failure Scenario
 
@@ -56,18 +62,21 @@ If you cannot answer all three with evidence from the code, **demote to UNCERTAI
 
 ### Gate 3 — Check Existing Guards
 
-Trace the code path:
+**MANDATORY before writing any verdict**: Run this and record the output.
+
+```bash
+# Search for existing guards — substitute the actual function/variable name from the finding
+grep -r "FunctionName\|guardPattern" \
+  --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
+  --include="*.py" --include="*.go" --include="*.rs" -n . | head -20
+```
+
+Trace what the grep found:
 - Is there a null check, type guard, or validation one frame up?
 - Does the framework (Express middleware, React error boundary, ORM constraints) already handle this case?
 - Do tests already encode this contract, making the "missing" behavior intentional?
 
-```bash
-# Find callers that may already guard against this
-grep -r "FunctionName" --include="*.ts" --include="*.tsx" \
-  --include="*.js" --include="*.py" --include="*.go" --include="*.rs" -l . | head -5
-```
-
-If existing guards cover the scenario, **demote to FALSE POSITIVE**.
+Record the command you ran and what it returned. If existing guards cover the scenario → **FALSE POSITIVE immediately**.
 
 ## Output Format
 
@@ -78,7 +87,9 @@ After checking all findings, output two sections:
 ```
 ✅ FINDING #N — CONFIRMED [CRITICAL|HIGH]
 File: <path>:<line>
-Verification: <one sentence on what you confirmed and how>
+Evidence: `<bash command you ran>` → <result in one line>
+Caller check: `<guard grep command>` → <result: found/not found>
+Verification: <one sentence conclusion>
 ```
 
 ### Demoted Findings (exclude from final review)
@@ -107,6 +118,6 @@ Evidence: <what you found that contradicts the finding>
 ## Confidence Standard
 
 A verified HIGH/CRITICAL finding requires you to be able to say:
-> "I read the code at `<file>:<line>`. The failure happens when `<trigger>`. The existing code has no guard because `<reason>`."
+> "I ran `<command>` and confirmed `<pattern>` at `<file>:<line>`. The failure happens when `<trigger>`. My guard grep returned `<result>`, confirming no existing protection."
 
-If you cannot complete that sentence with evidence, demote.
+If you cannot complete that sentence with actual command output, demote. **Reasoning without running commands is not evidence.**
