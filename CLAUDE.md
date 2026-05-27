@@ -12,6 +12,15 @@ Claude Code plugin，提供完整 code review 生態系統。
 - **版本**: v1.2.0
 - **License**: MIT
 
+## 常用操作速查
+
+| 想做什麼 | 參考章節 |
+|---------|---------|
+| 新增 agent / command / skill | [修改指引](#修改指引) |
+| 本地測試 plugin 變更 | [本地驗證](#本地驗證) |
+| 建立 PR | [分支工作流](#分支工作流) |
+| commit type 選哪個 | [Commit Type 指引](#commit-type-指引release-please) |
+
 ## 無 Build 步驟
 
 這是純 Markdown 內容 repo，無 `package.json`、無測試、無 lint 指令。「工作內容」= agent / command / skill `.md` 檔案 + `docs/index.html`。
@@ -19,7 +28,7 @@ Claude Code plugin，提供完整 code review 生態系統。
 ## 目錄結構
 
 ```
-agents/          # 25 個 agent（frontmatter: name/description/tools/model/color）
+agents/          # 27 個 agent（frontmatter: name/description/tools/model/color）
 commands/        # 9 個 slash command（/code-review、/review-pr、語言專項）
 skills/          # 3 個自動觸發 skill（security-review/security-scan/flutter-dart-code-review）
 docs/            # Landing page（GitHub Pages，純 HTML）
@@ -57,13 +66,14 @@ GitHub 用戶無需額外設定（使用 `gh` CLI）。
 | `docs:` | 純格式或標點，無實質內容改動 | 無 |
 | `chore:` | manifest 更新、README 格式 | 無 |
 
-⚠️ 錯用 `docs:` 更新 agent 內容 → Release Please 不會發布新版本。
+⚠️ 錯用 `docs:` 更新 agent 內容 → `docs:` 雖會進 CHANGELOG，但不觸發版本 bump（不建立 release PR）。
 
 ## 版本同步
 
 `plugin.json` 和 `marketplace.json` 的版本由 `release-please-config.json` 的 `extra-files` **自動同步**——Release Please 合入 release PR 時更新 main 分支。
 
 ⚠️ **develop 分支需手動跟上**：每次 Release Please release PR 合入 main 後，執行 `git merge origin/main` 將版本 bump 同步回 develop。
+觸發時機：`git log origin/main --oneline -3` 若出現 `chore(main): release v...` commit，即代表需要同步。
 驗證指令：`grep '"version"' .claude-plugin/plugin.json .claude-plugin/marketplace.json`
 
 ## Agent Frontmatter 建議欄位
@@ -115,6 +125,26 @@ Landing page 是純 HTML，直接編輯 `docs/index.html`。push 到 `main` 後 
 
 手動同步 `plugin.json` 和 `marketplace.json` 的 `keywords`、`description`（`version` 由 Release Please 自動同步，勿手動修改）。
 
+## 本地驗證
+
+修改 agent / command / skill 後，commit 前先驗：
+
+```bash
+# 快速確認 agent frontmatter 格式（name/description/color 必填）
+grep -l "^---" agents/*.md | xargs -I{} head -10 {}
+
+# 驗證各類別實際數量（與 CLAUDE.md 計數一致）
+echo "agents: $(ls agents/*.md | wc -l | tr -d ' '), commands: $(ls commands/*.md | wc -l | tr -d ' '), skills: $(ls -d skills/*/ | wc -l | tr -d ' ')"
+```
+
+修改後在 Claude Code 中執行（非 shell 指令）：`/reload-plugins`
+
+commit checklist：
+- [ ] 更新 `README.md` 對應表格
+- [ ] 更新 `docs/index.html` stats 數字
+- [ ] 更新本 `CLAUDE.md` 的計數（Agents 清單 / Commands 清單）
+- [ ] 實質內容變更用 `feat:` 或 `fix:`（非 `docs:`）— 只有這兩者才觸發版本 bump
+
 ## 設計原則（勿破壞）
 
 1. **高信心原則** — 只報告 >80% 確信的問題
@@ -122,18 +152,24 @@ Landing page 是純 HTML，直接編輯 `docs/index.html`。push 到 `main` 後 
 3. **零 finding 合法** — clean code → APPROVE
 4. **HIGH/CRITICAL 三要素** — 精確行號 + 具體失敗場景 + 現有 guard 為何不夠
 5. **False positive 過濾** — 排除 magic number、fire-and-forget、test fixture 等常見誤判
-6. **Verification gate** — `/review-pr` Step 3.5 由 `verification-reviewer` 對 HIGH/CRITICAL 執行三道關卡二次確認；CRITICAL 不可被移除（最多降為 HIGH）
+6. **Verification gate** — `/review-pr` Step 3.5 由 `verification-reviewer` 對 HIGH/CRITICAL 執行三道關卡二次確認；CONFIRMED 及 UNCERTAIN（降為 MEDIUM）的 finding 均進入最終報告；若本 PR diff 已修復問題，以「FIXED IN THIS PR」verdict 移除（不受 CRITICAL 保護限制）；CRITICAL 不可被移除（最多降為 HIGH）
 7. **NITPICK 分層** — 純風格偏好歸類為 NITPICK；`--profile=chill` 時略過，`--profile=assertive`（預設）時顯示
 
-## Agents 清單（25 個）
+## Agents 清單（27 個）
 
 ### 通用主審
 - `code-reviewer`（green）— 主審，含 false positive 過濾
 - `security-reviewer`（red）— OWASP Top 10，遇 CRITICAL 警報
 - `verification-reviewer`（orange）— 第二道驗證，在輸出前過濾 HIGH/CRITICAL false positive
 
-### `/review-pr` 協作（5 個）
-- `comment-analyzer` · `pr-test-analyzer` · `silent-failure-hunter` · `type-design-analyzer` · `code-simplifier`
+### 前置分析
+- `code-graph-analyzer`（cyan）— L2 import dependency + L3 co-change 風險圖；在並行 agents 前執行，結果快取於 `.claude/code-graph/`
+
+### `/review-pr` 協作（6 個）
+
+> `/review-pr` 並行 8 agent = `code-reviewer` + `security-reviewer`（通用主審）+ 下列 6 個
+
+- `comment-analyzer` · `pr-test-analyzer` · `silent-failure-hunter` · `type-design-analyzer` · `code-simplifier` · `pr-walkthrough-writer`
 
 ### 語言 / 框架專項（17 個）
 `cpp` · `csharp` · `database` · `django` · `fastapi` · `flutter` · `fsharp` · `go` · `healthcare`（opus）· `java` · `kotlin` · `mle` · `network-config` · `python` · `rust` · `swift` · `typescript`
@@ -145,7 +181,7 @@ Landing page 是純 HTML，直接編輯 `docs/index.html`。push 到 `main` 後 
 | 檔案 | Slash command | 備註 |
 |------|--------------|------|
 | `code-review.md` | `/code-review` | 本地 diff 或 PR review（GitHub / Bitbucket） |
-| `review-pr.md` | `/review-pr` | 六 agent 並行；`--focus=comments\|tests\|errors\|types\|code\|simplify` |
+| `review-pr.md` | `/review-pr` | `code-graph-analyzer` 前置 + 八 agent 並行；`--focus=comments\|tests\|errors\|types\|code\|simplify` |
 | `cpp-review.md` | `/cpp-review` | C++ 專項 |
 | `fastapi-review.md` | `/fastapi-review` | FastAPI 專項 |
 | `flutter-review.md` | `/flutter-review` | Flutter/Dart 專項 |

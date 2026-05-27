@@ -1,14 +1,14 @@
 # Code Review Plugin for Claude Code
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-![Agents](https://img.shields.io/badge/Agents-25-blue)
+![Agents](https://img.shields.io/badge/Agents-27-blue)
 ![Commands](https://img.shields.io/badge/Commands-9-green)
 ![Skills](https://img.shields.io/badge/Skills-3-purple)
 ![Platform](https://img.shields.io/badge/Platform-Claude_Code-orange)
 ![GitHub](https://img.shields.io/badge/PR-GitHub-181717?logo=github)
 ![Bitbucket](https://img.shields.io/badge/PR-Bitbucket-0052CC?logo=bitbucket)
 
-完整 code review 生態系統，以 Claude Code plugin 形式發布。提供 25 個語言/框架專項 reviewer agent、9 個 slash command、以及 3 個安全 review skill。
+完整 code review 生態系統，以 Claude Code plugin 形式發布。提供 27 個 agent（含語言/框架專項 reviewer + Code Graph Analyzer）、9 個 slash command、以及 3 個安全 review skill。
 
 ---
 
@@ -16,8 +16,8 @@
 
 | | |
 |---|---|
-| 🤖 **25 個 Reviewer Agent** | TypeScript · Python · Go · Rust · Java · Kotlin · Swift · C++ · C# · F# · Django · FastAPI · Flutter · DB · Healthcare · ML + Verification |
-| ⚡ **六 Agent 並行 + Verification Pass** | `/review-pr` 同時啟動 6 個專項 agent；HIGH/CRITICAL finding 由 `verification-reviewer` 二次確認後才輸出 |
+| 🤖 **27 個 Agent** | TypeScript · Python · Go · Rust · Java · Kotlin · Swift · C++ · C# · F# · Django · FastAPI · Flutter · DB · Healthcare · ML + Code Graph Analyzer + Verification + PR Walkthrough |
+| ⚡ **Code Graph + 八 Agent 並行** | `/review-pr` 先執行 `code-graph-analyzer`（import deps + co-change risk），結果快取至 `.claude/code-graph/`；再並行啟動 8 個專項 agent；HIGH/CRITICAL finding 由 `verification-reviewer` 二次確認 |
 | 🔗 **雙平台 PR Review** | 自動偵測 GitHub（`gh` CLI）或 Bitbucket Cloud（REST API v2.0） |
 | 🔒 **多層安全掃描** | OWASP Top 10 · PHI/HIPAA · Claude Code 設定掃描 |
 | 🎯 **高信心原則** | 只報告 >80% 確信的問題，零 finding = APPROVE，不製造雜訊 |
@@ -47,7 +47,7 @@
 # 審查 Bitbucket PR
 /code-review https://bitbucket.org/workspace/repo/pull-requests/123
 
-# 六 agent 並行 PR review
+# 八 agent 並行 PR review
 /review-pr 123
 ```
 
@@ -59,10 +59,10 @@
 code-review plugin
 ├── Commands（9 個 slash commands）
 │   ├── /code-review          本地 diff 或 PR review
-│   ├── /review-pr            六 agent 並行 + --focus 過濾
+│   ├── /review-pr            八 agent 並行 + --focus 過濾
 │   └── /python-review ... /flutter-review  語言專項
 │
-├── Agents（25 個 reviewer agents）
+├── Agents（27 個 agent）
 │   ├── 通用主審
 │   │   ├── code-reviewer          主審，含 false positive 過濾
 │   │   ├── security-reviewer      OWASP Top 10，遇 CRITICAL 警報
@@ -72,7 +72,8 @@ code-review plugin
 │   │   ├── pr-test-analyzer  測試覆蓋
 │   │   ├── silent-failure-hunter  swallowed error 偵測
 │   │   ├── type-design-analyzer  型別設計
-│   │   └── code-simplifier   過度複雜實作
+│   │   ├── code-simplifier   過度複雜實作
+│   │   └── pr-walkthrough-writer  Walkthrough + Mermaid diagram
 │   └── 語言 / 框架專項（17 個）
 │       TypeScript · Python · Go · Rust · C++ · C# · Java
 │       Kotlin · Swift · F# · Django · FastAPI · Flutter
@@ -159,14 +160,16 @@ App Password 建立：Bitbucket → Settings → Personal settings → App passw
 
 ### 3. 多 Agent 並行 PR Review
 
-同時啟動 6 個專項 agent，confidence < 80% 的 finding 自動過濾：
+同時啟動 8 個專項 agent，confidence < 80% 的 finding 自動過濾：
 
-```
+```bash
 /review-pr 123
-/review-pr 123 --focus security
-/review-pr 123 --focus performance
-/review-pr 123 --focus types
+/review-pr 123 --focus comments
 /review-pr 123 --focus tests
+/review-pr 123 --focus errors
+/review-pr 123 --focus types
+/review-pr 123 --focus code
+/review-pr 123 --focus simplify
 ```
 
 ### 4. 語言專項 Review
@@ -201,7 +204,7 @@ App Password 建立：Bitbucket → Settings → Personal settings → App passw
 | 指令 | 說明 |
 |------|------|
 | `/code-review` | 本地 review 或 PR review（傳 PR 號/URL） |
-| `/review-pr` | 六 agent 並行 PR review，支援 `--focus` |
+| `/review-pr` | 八 agent 並行 PR review，支援 `--focus` |
 | `/python-review` | Python 專項 review |
 | `/go-review` | Go 專項 review |
 | `/rust-review` | Rust 專項 review |
@@ -222,6 +225,12 @@ App Password 建立：Bitbucket → Settings → Personal settings → App passw
 | `security-reviewer` | 🔴 red | OWASP Top 10 掃描，遇 CRITICAL 發緊急警報 |
 | `verification-reviewer` | 🟠 orange | HIGH/CRITICAL finding 二次確認（三道關卡）；由 `/review-pr` Step 3.5 自動調用 |
 
+### 前置分析
+
+| Agent | Color | 說明 |
+|-------|-------|------|
+| `code-graph-analyzer` | 🔵 cyan | L2 import dependency + L3 co-change risk；並行 agents 前執行；快取於 `.claude/code-graph/` |
+
 ### `/review-pr` 協作 Agents
 
 | Agent | Color | 說明 |
@@ -231,6 +240,7 @@ App Password 建立：Bitbucket → Settings → Personal settings → App passw
 | `silent-failure-hunter` | 🔵 cyan | 偵測 swallowed error、ignored promise |
 | `type-design-analyzer` | 🔵 cyan | 型別設計審查 |
 | `code-simplifier` | 🔵 cyan | 找過度複雜的實作 |
+| `pr-walkthrough-writer` | 🔵 blue | 生成結構化 PR walkthrough 與 Mermaid sequence diagram |
 
 ### 語言 / 框架專項
 
@@ -275,6 +285,8 @@ Skills 會根據任務上下文自動啟動，無需手動呼叫。
 3. **零 finding 合法** — clean code → APPROVE，不強行挑毛病
 4. **HIGH/CRITICAL 三要素** — 精確行號 + 具體失敗場景 + 現有 guard 為何不夠
 5. **False positive 過濾** — 明確排除 LLM reviewer 常見誤判（magic number、fire-and-forget、test fixture 等）
+6. **Verification gate** — `/review-pr` Step 3.5 由 `verification-reviewer` 對所有 HIGH/CRITICAL finding 執行三道關卡二次確認；CONFIRMED finding 及 UNCERTAIN（降為 MEDIUM）的 finding 均進入最終報告；若本 PR diff 已修復問題，以「FIXED IN THIS PR」verdict 移除（不受 CRITICAL 保護限制）；CRITICAL finding 不可被完全移除，最多降為 HIGH
+7. **NITPICK 分層** — 純風格偏好歸類為 NITPICK；`--profile=chill` 時略過 MEDIUM/LOW/NITPICK，`--profile=assertive`（預設）時顯示所有等級
 
 ---
 
@@ -285,7 +297,7 @@ code-review/
 ├── .claude-plugin/
 │   ├── plugin.json          # Plugin manifest
 │   └── marketplace.json     # Marketplace 發布設定
-├── agents/                  # 25 個 reviewer agents
+├── agents/                  # 27 個 agent
 ├── commands/                # 9 個 slash commands
 └── skills/                  # 3 個 review skills
     ├── security-review/

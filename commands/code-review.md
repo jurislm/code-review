@@ -115,11 +115,84 @@ gh pr diff <NUMBER>
 
 If PR not found, stop with error. Store PR metadata for later phases.
 
+### Phase 1.5 — CLASSIFY
+
+**Incremental review detection**: Check if this PR was previously reviewed; skip if no new commits:
+
+```bash
+LAST_COMMIT_FILE=".claude/reviews/pr-<NUMBER>-last-commit.txt"
+CURRENT_HEAD=$(gh pr view <NUMBER> --json headRefOid --jq '.headRefOid')
+if [ -f "$LAST_COMMIT_FILE" ]; then
+  LAST_COMMIT=$(cat "$LAST_COMMIT_FILE")
+  if [ "$LAST_COMMIT" = "$CURRENT_HEAD" ]; then
+    echo "No new commits since last review. Nothing to do."
+    exit 0
+  fi
+  echo "New commits detected since last review ($LAST_COMMIT → $CURRENT_HEAD). Running full review."
+fi
+# LAST_COMMIT_FILE is written at the end of Phase 8 so the next run can skip if unchanged
+```
+
+> Note: This is a **skip-if-unchanged** gate, not a diff-scoping mechanism. When new commits exist, the full PR diff is always reviewed. This ensures no regressions are missed from rebases or force-pushes.
+
+**File classification**: Route between Fast Path and Slow Path:
+
+```bash
+CHANGED_FILES=$(gh pr diff <NUMBER> --name-only | tr -d '\r')
+FAST_ONLY=true
+LOGIC_FILES=""
+SECURITY_FILES=""
+while IFS= read -r file; do
+  case "$file" in
+    *.md|*.txt|*.rst|*.adoc|CHANGELOG*|LICENSE*|README*)
+      echo "DOCS: $file" ;;
+    *.json|*.yaml|*.yml|*.toml|*package-lock*|*.lock|*.sum)
+      echo "CONFIG: $file" ;;
+    *auth*|*crypto*|*token*|*password*|*session*|*jwt*|*oauth*|*secret*)
+      echo "SECURITY: $file"; SECURITY_FILES="${SECURITY_FILES:+$SECURITY_FILES }$file"; FAST_ONLY=false ;;
+    *test*|*spec*|*__tests__*|*.test.*|*.spec.*)
+      echo "TEST: $file" ;;
+    *.ts|*.tsx|*.js|*.jsx|*.py|*.go|*.rs|*.kt|*.swift|*.java|*.cs|*.rb|*.php|\
+*.cpp|*.cc|*.c|*.h|*.hpp|*.dart|*.scala|*.ex|*.exs|*.lua|*.vue|*.svelte)
+      echo "LOGIC: $file"; LOGIC_FILES="${LOGIC_FILES:+$LOGIC_FILES }$file"; FAST_ONLY=false ;;
+    *)
+      echo "OTHER: $file" ;;
+  esac
+done <<< "$CHANGED_FILES"
+```
+
+`$LOGIC_FILES` and `$SECURITY_FILES` are now available as space-separated lists for Phase 2.5.
+
+**Fast Path** (only DOCS + CONFIG + OTHER — zero LOGIC/SECURITY files):
+- Skip Phases 2, 3, 4, and 5 entirely
+- Run **secret scan only**: execute the static analysis / secret scan commands from Phase 2 Step 6 (linters + credential patterns)
+- If zero secrets or credentials found: post `gh pr review --approve` with brief note "Docs/config changes — no logic review needed" (Phase 7b), then proceed to Phase 8 (skip Phases 6 and 6.5)
+- If a secret/credential is detected: exit Fast Path and run the full Slow Path from Phase 2 onwards
+
+**Slow Path** (any LOGIC or SECURITY file present): proceed to Phase 2 normally.
+
+**SECURITY files**: in Phase 3, pass `$SECURITY_FILES` explicitly to `security-reviewer` for prioritized analysis.
+
 ### Phase 2 — CONTEXT
 
 Build review context:
 
-1. **Project rules** — Read `CLAUDE.md`, `.claude/docs/`, and any contributing guidelines
+1. **Project rules** — Read `CLAUDE.md`, `.claude/docs/`, and any contributing guidelines. Also load path-based review rules if present:
+   ```bash
+   [ -f ".claude/review-paths.yaml" ] && cat ".claude/review-paths.yaml"
+   ```
+   This is an **optional, user-created** file (not bundled with the plugin). If present, find the most specific matching `pattern` for each changed file and include its `rules` in the review prompt. Files matching a `skip` list have those check categories suppressed. Example schema to create in your project:
+   ```yaml
+   paths:
+     - pattern: "src/api/**"
+       focus: security
+       rules: ["All public endpoints must require authentication", "Rate limiting required on POST"]
+     - pattern: "src/db/**"
+       focus: performance
+       rules: ["No queries without LIMIT", "No string concatenation in SQL"]
+     - pattern: "**/*.test.ts"
+       skip: [magic_numbers, function_length, console_log]
+   ```
 2. **Planning artifacts** — Check `.claude/prds/`, `.claude/plans/`, `.claude/reviews/`, and legacy `.claude/PRPs/{prds,plans,reports,reviews}/` for context related to this PR
 3. **PR intent** — Parse PR description for goals, linked issues, test plans. Explicitly fetch any linked issues:
    ```bash
@@ -156,6 +229,20 @@ Build review context:
    gh pr checks <NUMBER> 2>/dev/null | head -30
    ```
    If any checks are failing, note them at the top of Phase 3 with `⚠️ CI failing: <check_name>` and treat the related code paths as elevated-priority review areas. Do not block the review — just elevate priority.
+
+### Phase 2.5 — CODE GRAPH
+
+Run `code-graph-analyzer` **sequentially** (wait for result before starting Phase 3). This provides cross-file dependency context unavailable from the diff alone.
+
+Pass to the agent:
+- `$LOGIC_FILES` and `$SECURITY_FILES` space-separated lists from Phase 1.5 (excludes DOCS/CONFIG/TEST)
+- Cache key: `pr-<number>-<first8charsOfHeadSha>` for PR mode; `local-<sha8>` for local diff mode (use `git rev-parse --short=8 HEAD`)
+
+The agent checks `.claude/code-graph/<cache_key>-impact-map.md` first — returns cached map if the SHA matches. Otherwise computes L2 import dependencies and L3 co-change risk, then writes to `.claude/code-graph/`.
+
+**Store the returned markdown as `IMPACT_MAP`.** Pass it as context to Phase 3 review, annotating findings that involve files mentioned in the "High-risk dependents" or "Missing co-changes" sections with elevated priority.
+
+If `code-graph-analyzer` returns an error or times out, proceed to Phase 3 without impact map context — do not block the review.
 
 ### Phase 3 — REVIEW
 
@@ -243,6 +330,15 @@ Special cases:
 - Only docs/config changes → Lighter review, focus on correctness
 - Explicit `--approve` or `--request-changes` flag → Override decision (but still report all findings)
 
+**Count findings by severity** and store for Phase 6.5:
+```bash
+CRITICAL_COUNT=<number of CRITICAL findings>
+HIGH_COUNT=<number of HIGH findings>
+MEDIUM_COUNT=<number of MEDIUM findings>
+LOW_COUNT=<number of LOW and NITPICK findings>
+LOW_NITPICK_LIST=<formatted markdown list of all LOW and NITPICK findings>
+```
+
 ### Phase 6 — REPORT
 
 Create review artifact at `.claude/reviews/pr-<NUMBER>-review.md`:
@@ -291,29 +387,126 @@ Create review artifact at `.claude/reviews/pr-<NUMBER>-review.md`:
 <list of files with change type: Added/Modified/Deleted>
 ```
 
-### Phase 7 — PUBLISH
+### Phase 6.5 — UPDATE PR DESCRIPTION
 
-Post the review to GitHub:
+Auto-append a structured review summary to the PR description. Idempotent — strips any previously generated block before appending:
 
 ```bash
-# If APPROVE
-gh pr review <NUMBER> --approve --body "<summary of review>"
+CURRENT_BODY=$(gh pr view <NUMBER> --json body --jq '.body')
 
-# If REQUEST CHANGES
-gh pr review <NUMBER> --request-changes --body "<summary with required fixes>"
+STRIPPED=$(echo "$CURRENT_BODY" | python3 -c "
+import sys, re
+body = sys.stdin.read()
+body = re.sub(r'<!-- cr-summary:start -->.*?<!-- cr-summary:end -->', '', body, flags=re.DOTALL)
+body = re.sub(r'<!-- cr-summary:start -->', '', body)
+print(body.strip())
+")
 
-# If COMMENT only (draft PR or informational)
-gh pr review <NUMBER> --comment --body "<summary>"
+SUMMARY_BLOCK="<!-- cr-summary:start -->
+
+---
+## 📋 Code Review Summary
+
+| Category | Files |
+|---|---|
+| Logic / Feature | <logic_files> |
+| Tests | <test_files> |
+| Config / Docs | <config_doc_files> |
+
+**Reviewed**: $(date +%Y-%m-%d) · **Findings**: ${CRITICAL_COUNT} critical · ${HIGH_COUNT} high · ${MEDIUM_COUNT} medium
+<!-- cr-summary:end -->"
+
+printf '%s\n\n%s' "$STRIPPED" "$SUMMARY_BLOCK" \
+  | gh pr edit <NUMBER> --body-file -
 ```
 
-For inline comments on specific lines:
+> Skip this phase for Bitbucket (REST API does not support PR description updates via the same CLI workflow).
+
+### Phase 7 — PUBLISH
+
+Post the review to GitHub using severity-based delivery (three steps):
+
+**Step 7a — Inline comments for CRITICAL/HIGH** (post individually, max 10; excess joins the summary table in Step 7b):
+
+For each CRITICAL/HIGH finding with a specific `file:line`, build the comment:
+```text
+**[{SEVERITY}] {issue_title}**
+
+{concrete_failure_scenario}
+
+**Why existing guards don't catch it:** {guard_gap}
+```
+If the fix is a single-line replacement, append a committable suggestion block so the author can apply it with one click:
+````markdown
+```suggestion
+{fixed_line_content}
+```
+````
+
 ```bash
+HEAD_SHA=$(gh pr view <NUMBER> --json headRefOid --jq .headRefOid)
 gh api "repos/{owner}/{repo}/pulls/<NUMBER>/comments" \
-  -f body="<comment>" \
+  -f body="$COMMENT_BODY" \
   -f path="<file>" \
-  -F line=<line-number> \
+  -F line=<line_number> \
   -f side="RIGHT" \
-  -f commit_id="$(gh pr view <NUMBER> --json headRefOid --jq .headRefOid)"
+  -f commit_id="$HEAD_SHA"
+```
+
+**Step 7b — Main review body** (MEDIUM findings as table + overall decision):
+
+> **Profile gate**: if `--profile=chill` was specified, skip the MEDIUM section entirely — include only the severity summary counts and the overall decision. Proceed directly to the `gh pr review` command without listing MEDIUM findings.
+
+Build `$REVIEW_BODY`:
+```markdown
+## 📊 Review Summary
+
+| Severity | Count |
+|---|---|
+| 🔴 CRITICAL | {n} |
+| 🟠 HIGH | {n} |
+| 🟡 MEDIUM | {n} |
+| 🔵 LOW | {n} |
+
+## ⚠️ Issues Requiring Attention
+
+| File:Line | Issue | Suggested Fix |
+|---|---|---|
+| `file:line` | description | fix |
+```
+Include MEDIUM findings (assertive profile only). Also include HIGH findings beyond the 10-inline limit.
+
+```bash
+# APPROVE — zero CRITICAL/HIGH issues, validation passes
+gh pr review <NUMBER> --approve --body "$REVIEW_BODY"
+
+# BLOCK — any CRITICAL findings
+# GitHub has no native BLOCK review state — use REQUEST CHANGES with a prominent ⛔ BLOCK header
+if [ "$CRITICAL_COUNT" -gt 0 ]; then
+  REVIEW_BODY="⛔ BLOCK — This PR must not be merged until all CRITICAL issues are resolved.
+
+$REVIEW_BODY"
+fi
+gh pr review <NUMBER> --request-changes --body "$REVIEW_BODY"
+
+# REQUEST CHANGES — any HIGH issues or validation failures (no CRITICAL)
+gh pr review <NUMBER> --request-changes --body "$REVIEW_BODY"
+
+# COMMENT — draft PR or informational
+gh pr review <NUMBER> --comment --body "$REVIEW_BODY"
+```
+
+**Step 7c — Collapsible LOW/NITPICK** (if any; posted as a separate final comment):
+
+> **Profile gate**: skip Step 7c entirely when `--profile=chill` — LOW and NITPICK findings are suppressed.
+
+```bash
+gh pr review <NUMBER> --comment --body "<details>
+<summary>🔵 Low Priority / Style Suggestions (${LOW_COUNT})</summary>
+
+${LOW_NITPICK_LIST}
+
+</details>"
 ```
 
 ### Phase 8 — OUTPUT
@@ -330,6 +523,19 @@ Validation: <pass_count>/<total_count> checks passed
 Artifacts:
   Review: .claude/reviews/pr-<NUMBER>-review.md
   GitHub: <PR URL>
+```
+
+Save current HEAD commit for incremental review tracking (next review will only process new commits):
+
+**Only write this file if Phase 7 completed successfully** (the `gh pr review` command in Step 7b returned exit code 0). If Phase 7 failed for any reason (network error, expired token, API error), skip writing this file so the next run retries from scratch rather than silently skipping the PR.
+
+```bash
+# Capture the exit code of the Phase 7b gh pr review call (set REVIEW_EXIT=$? immediately after it)
+if [ "${REVIEW_EXIT:-1}" -eq 0 ]; then
+  mkdir -p .claude/reviews
+  gh pr view <NUMBER> --json headRefOid --jq '.headRefOid' \
+    > ".claude/reviews/pr-<NUMBER>-last-commit.txt"
+fi
 ```
 
 ---
@@ -436,10 +642,33 @@ Create review artifact at `.claude/reviews/pr-<ID>-review.md` using the same for
 
 ### Phase 7 — PUBLISH
 
-Post review result to Bitbucket:
+Post review result to Bitbucket using severity-based delivery:
+
+**Step 7a — Inline comments for CRITICAL/HIGH** (max 10; excess joins Step 7b):
 
 ```bash
-# Post overall review comment (all cases)
+# For each CRITICAL/HIGH finding — build comment body first
+COMMENT_BODY="**[{SEVERITY}] {issue_title}**\n\n{failure_scenario}\n\n**Why existing guards don't catch it:** {guard_gap}"
+
+# Added/modified line → use "to"
+curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+  -H "Content-Type: application/json" \
+  -d "{\"content\":{\"raw\":\"$COMMENT_BODY\"},\"inline\":{\"path\":\"$FILEPATH\",\"to\":$LINE_NUMBER}}" \
+  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
+
+# Removed line → use "from"
+curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+  -H "Content-Type: application/json" \
+  -d "{\"content\":{\"raw\":\"$COMMENT_BODY\"},\"inline\":{\"path\":\"$FILEPATH\",\"from\":$LINE_NUMBER}}" \
+  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
+```
+
+**Step 7b — Main review comment** (MEDIUM table + approve/request-changes decision):
+
+Build `$REVIEW_SUMMARY` as a Markdown table of MEDIUM findings plus HIGH overflow, then post:
+
+```bash
+# Post summary comment (all cases)
 curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   -H "Content-Type: application/json" \
   -d "{\"content\": {\"raw\": \"$REVIEW_SUMMARY\"}}" \
@@ -454,18 +683,13 @@ curl -s -o /dev/null -w "%{http_code}" -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD
   "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/request-changes"
 ```
 
-For inline comments on specific lines:
-```bash
-# 新增行（新版本的行號）→ 用 "to"
-curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
-  -H "Content-Type: application/json" \
-  -d "{\"content\":{\"raw\":\"$COMMENT\"},\"inline\":{\"path\":\"$FILEPATH\",\"to\":$LINE_NUMBER}}" \
-  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
+**Step 7c — Low priority findings** (if any; Bitbucket has no HTML folding — use plain format):
 
-# 刪除行（舊版本的行號）→ 用 "from"
+```bash
+LOW_BODY="**Low Priority / Style Suggestions (${LOW_COUNT}):**\n\n${LOW_NITPICK_LIST}"
 curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   -H "Content-Type: application/json" \
-  -d "{\"content\":{\"raw\":\"$COMMENT\"},\"inline\":{\"path\":\"$FILEPATH\",\"from\":$LINE_NUMBER}}" \
+  -d "{\"content\": {\"raw\": \"$LOW_BODY\"}}" \
   "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
 ```
 
