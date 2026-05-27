@@ -988,7 +988,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         <div class="agent-dot" style="background:#b05a00"></div>
         <div class="agent-body">
           <div class="agent-name">verification-reviewer</div>
-          <div class="agent-desc">驗證 agent，對 HIGH / CRITICAL finding 執行二次確認（三道關卡：讀取精確位置程式碼、確認失敗場景可重現、檢查現有 guard 是否已覆蓋）。只輸出 CONFIRMED 或 DEMOTED，不產生新 finding。由 <code>/review-pr</code> Step 3.5 自動調用。</div>
+          <div class="agent-desc">驗證 agent，對 HIGH / CRITICAL finding 執行二次確認（三道關卡：<code>grep -Fn</code> 確認程式碼存在、確認失敗場景可重現、檢查現有 guard 是否已覆蓋）。不產生新 finding；CRITICAL finding 永不移除，最多降為 HIGH，任何 agent 提出的 CRITICAL 均受此保護。由 <code>/review-pr</code> Step 3.5 自動調用。</div>
           <div class="agent-pills">
             <span class="pill pill-model">Sonnet</span>
             <span class="pill">Read · Grep · Glob · Bash</span>
@@ -1007,7 +1007,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         <div class="agent-dot" style="background:#1a7a88"></div>
         <div class="agent-body">
           <div class="agent-name">code-graph-analyzer</div>
-          <div class="agent-desc">預計算 Code Impact Map：L2 import dependency tracing（grep-based，單跳 BFS）+ L3 co-change risk（git log 最近 50 commits）。結果快取於 <code>.claude/code-graph/</code>，下次相同 SHA 直接命中快取。由 <code>/review-pr</code> Step 2.5 和 <code>/code-review</code> Phase 2.5 自動調用。</div>
+          <div class="agent-desc">預計算 Code Impact Map：L2 import dependency tracing（多語言 grep，單跳 BFS；支援 JS/TS、Python、Java/Kotlin、Rust、Swift、C#、Ruby、PHP）+ L3 co-change risk（git log 最近 50 commits）。結果快取於 <code>.claude/code-graph/</code>，下次相同 SHA 直接命中快取。由 <code>/review-pr</code> Step 2.5 和 <code>/code-review</code> Phase 2.5 自動調用。</div>
           <div class="agent-pills"><span class="pill pill-model">Sonnet</span><span class="pill">Read · Grep · Glob · Bash · Write</span></div>
         </div>
       </div>
