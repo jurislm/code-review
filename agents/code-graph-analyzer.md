@@ -64,14 +64,16 @@ grep -rn "from.*['\"].*${BASENAME}['\"]" \
   --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
   --include="*.py" --include="*.go" --include="*.rs" --include="*.kt" \
   --include="*.swift" --include="*.java" --include="*.cs" \
-  . 2>/dev/null | grep -v "node_modules" | grep -v "\.git" | \
-  grep -v "\.test\." | grep -v "\.spec\." | grep -v "__tests__" | head -20 || true
+  --exclude-dir=node_modules --exclude-dir=.git \
+  --exclude-dir=__tests__ --exclude="*.test.*" --exclude="*.spec.*" \
+  . 2>/dev/null | head -20 || true
 
 # Also check require() style
 grep -rn "require.*['\"].*${BASENAME}['\"]" \
   --include="*.js" --include="*.jsx" --include="*.ts" \
-  . 2>/dev/null | grep -v "node_modules" | grep -v "\.git" | \
-  grep -v "\.test\." | grep -v "\.spec\." | grep -v "__tests__" | head -10 || true
+  --exclude-dir=node_modules --exclude-dir=.git \
+  --exclude-dir=__tests__ --exclude="*.test.*" --exclude="*.spec.*" \
+  . 2>/dev/null | head -10 || true
 ```
 
 **Record**: list of `file:line` that import the changed file.

@@ -178,7 +178,7 @@ commit checklist：
 | 檔案 | Slash command | 備註 |
 |------|--------------|------|
 | `code-review.md` | `/code-review` | 本地 diff 或 PR review（GitHub / Bitbucket） |
-| `review-pr.md` | `/review-pr` | `code-graph-analyzer` 前置 + 七 agent 並行；`--focus=comments\|tests\|errors\|types\|code\|simplify` |
+| `review-pr.md` | `/review-pr` | `code-graph-analyzer` 前置 + 八 agent 並行；`--focus=comments\|tests\|errors\|types\|code\|simplify` |
 | `cpp-review.md` | `/cpp-review` | C++ 專項 |
 | `fastapi-review.md` | `/fastapi-review` | FastAPI 專項 |
 | `flutter-review.md` | `/flutter-review` | Flutter/Dart 專項 |

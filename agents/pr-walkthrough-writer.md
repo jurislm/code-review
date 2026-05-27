@@ -92,7 +92,7 @@ Constraints: max 6–8 participants, 8–12 message steps. If the flow involves 
 
 Return the complete walkthrough as:
 
-```markdown
+````markdown
 ## 🔍 PR Walkthrough
 
 **Review Effort**: <N>/5 — <label> (<one-line reason>)
@@ -105,6 +105,6 @@ Return the complete walkthrough as:
 sequenceDiagram
 ...
 ```
-```
+````
 
 If the sequence diagram was skipped (Step 3 conditions not met), end after the file table — no placeholder text.

@@ -66,9 +66,11 @@ If you cannot answer all three with evidence from the code, **demote to UNCERTAI
 
 ```bash
 # Search for existing guards — substitute the actual function/variable name from the finding
-grep -r "FunctionName\|guardPattern" \
+grep -ERn "FunctionName|guardPattern" \
   --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
-  --include="*.py" --include="*.go" --include="*.rs" -n . | head -20 || true
+  --include="*.py" --include="*.go" --include="*.rs" \
+  --exclude-dir=node_modules --exclude-dir=.git \
+  . | head -20 || true
 ```
 
 Trace what the grep found:

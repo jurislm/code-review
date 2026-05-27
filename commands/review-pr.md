@@ -82,6 +82,7 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
 
 3. Run specialized review agents in parallel:
    - `code-reviewer`
+   - `security-reviewer` — OWASP Top 10 analysis; CRITICAL findings are never dropped by verification pass
    - `comment-analyzer`
    - `pr-test-analyzer`
    - `silent-failure-hunter`

@@ -17,7 +17,7 @@
 | | |
 |---|---|
 | 🤖 **27 個 Agent** | TypeScript · Python · Go · Rust · Java · Kotlin · Swift · C++ · C# · F# · Django · FastAPI · Flutter · DB · Healthcare · ML + Code Graph Analyzer + Verification + PR Walkthrough |
-| ⚡ **Code Graph + 七 Agent 並行** | `/review-pr` 先執行 `code-graph-analyzer`（import deps + co-change risk），結果快取至 `.claude/code-graph/`；再並行啟動 7 個專項 agent；HIGH/CRITICAL finding 由 `verification-reviewer` 二次確認 |
+| ⚡ **Code Graph + 八 Agent 並行** | `/review-pr` 先執行 `code-graph-analyzer`（import deps + co-change risk），結果快取至 `.claude/code-graph/`；再並行啟動 8 個專項 agent；HIGH/CRITICAL finding 由 `verification-reviewer` 二次確認 |
 | 🔗 **雙平台 PR Review** | 自動偵測 GitHub（`gh` CLI）或 Bitbucket Cloud（REST API v2.0） |
 | 🔒 **多層安全掃描** | OWASP Top 10 · PHI/HIPAA · Claude Code 設定掃描 |
 | 🎯 **高信心原則** | 只報告 >80% 確信的問題，零 finding = APPROVE，不製造雜訊 |
@@ -47,7 +47,7 @@
 # 審查 Bitbucket PR
 /code-review https://bitbucket.org/workspace/repo/pull-requests/123
 
-# 七 agent 並行 PR review
+# 八 agent 並行 PR review
 /review-pr 123
 ```
 
@@ -59,7 +59,7 @@
 code-review plugin
 ├── Commands（9 個 slash commands）
 │   ├── /code-review          本地 diff 或 PR review
-│   ├── /review-pr            七 agent 並行 + --focus 過濾
+│   ├── /review-pr            八 agent 並行 + --focus 過濾
 │   └── /python-review ... /flutter-review  語言專項
 │
 ├── Agents（27 個 agent）
@@ -202,7 +202,7 @@ App Password 建立：Bitbucket → Settings → Personal settings → App passw
 | 指令 | 說明 |
 |------|------|
 | `/code-review` | 本地 review 或 PR review（傳 PR 號/URL） |
-| `/review-pr` | 七 agent 並行 PR review，支援 `--focus` |
+| `/review-pr` | 八 agent 並行 PR review，支援 `--focus` |
 | `/python-review` | Python 專項 review |
 | `/go-review` | Go 專項 review |
 | `/rust-review` | Rust 專項 review |

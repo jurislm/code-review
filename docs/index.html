@@ -725,7 +725,7 @@
       <h3>核心特性</h3>
       <ul>
         <li><strong>27 個 Agent</strong> — 涵蓋 TypeScript、Python、Go、Rust、Java、Kotlin、Swift、C++、C#、F#、Django、FastAPI、Flutter、Database、Healthcare（PHI/HIPAA）、ML pipeline + Code Graph Analyzer + Verification + PR Walkthrough</li>
-        <li><strong>Code Graph + 七 Agent 並行 PR Review</strong> — <code>/review-pr</code> 先執行 code-graph-analyzer（import deps + co-change risk），再並行啟動 7 個專項 agent，confidence &lt; 80% 自動過濾</li>
+        <li><strong>Code Graph + 八 Agent 並行 PR Review</strong> — <code>/review-pr</code> 先執行 code-graph-analyzer（import deps + co-change risk），再並行啟動 8 個專項 agent，confidence &lt; 80% 自動過濾</li>
         <li><strong>多平台 PR Review</strong> — 自動偵測 GitHub（需 <code>gh</code> CLI）與 Bitbucket Cloud（需環境變數）</li>
         <li><strong>Auto-trigger Skills</strong> — 根據任務上下文自動啟動安全掃描，無需手動呼叫</li>
       </ul>
@@ -865,7 +865,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
     <!-- /review-pr -->
     <section class="doc-section" id="cmd-review-pr">
       <h2>/review-pr <span class="h2-tag">command</span></h2>
-      <p>先執行 <code>code-graph-analyzer</code>（import dependency + co-change 風險，結果快取於 <code>.claude/code-graph/</code>），再並行啟動 7 個專項 agent 對同一 PR 進行審查，彙整去重並排序 finding。confidence &lt; 80% 自動過濾。所有 HIGH / CRITICAL finding 須通過 <code>verification-reviewer</code>（Step 3.5）二次確認後才納入報告。</p>
+      <p>先執行 <code>code-graph-analyzer</code>（import dependency + co-change 風險，結果快取於 <code>.claude/code-graph/</code>），再並行啟動 8 個專項 agent 對同一 PR 進行審查，彙整去重並排序 finding。confidence &lt; 80% 自動過濾。所有 HIGH / CRITICAL finding 須通過 <code>verification-reviewer</code>（Step 3.5）二次確認後才納入報告。</p>
 
       <div class="codeblock">
         <div class="codeblock-header">
