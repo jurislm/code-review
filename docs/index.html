@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Code Review Plugin — Technical Documentation</title>
-  <meta name="description" content="26-agent code review ecosystem for Claude Code — complete technical reference for commands, agents, and skills." />
+  <meta name="description" content="27-agent code review ecosystem for Claude Code — complete technical reference for commands, agents, and skills." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Nunito:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -705,13 +705,13 @@
           <div class="stat-label">Confidence Gate</div>
         </div>
         <div class="stat-item">
-          <div class="stat-num" data-count="6">6</div>
+          <div class="stat-num" data-count="7">7</div>
           <div class="stat-label">Parallel PR Agents</div>
         </div>
       </div>
 
       <p class="lead">
-        完整 code review 生態系統，以 Claude Code plugin 形式發布。提供 25 個語言 / 框架專項 reviewer agent、9 個 slash command、以及 3 個自動觸發的安全 review skill。
+        完整 code review 生態系統，以 Claude Code plugin 形式發布。提供 27 個 agent（含 Code Graph Analyzer、語言/框架專項 reviewer、Verification 等）、9 個 slash command、以及 3 個自動觸發的安全 review skill。
       </p>
 
       <div class="callout callout-tip">
@@ -724,8 +724,8 @@
 
       <h3>核心特性</h3>
       <ul>
-        <li><strong>25 個 Reviewer Agent</strong> — 涵蓋 TypeScript、Python、Go、Rust、Java、Kotlin、Swift、C++、C#、F#、Django、FastAPI、Flutter、Database、Healthcare（PHI/HIPAA）、ML pipeline + Verification</li>
-        <li><strong>六 Agent 並行 PR Review</strong> — <code>/review-pr</code> 同時啟動 6 個專項 agent，confidence &lt; 80% 自動過濾</li>
+        <li><strong>27 個 Agent</strong> — 涵蓋 TypeScript、Python、Go、Rust、Java、Kotlin、Swift、C++、C#、F#、Django、FastAPI、Flutter、Database、Healthcare（PHI/HIPAA）、ML pipeline + Code Graph Analyzer + Verification + PR Walkthrough</li>
+        <li><strong>Code Graph + 七 Agent 並行 PR Review</strong> — <code>/review-pr</code> 先執行 code-graph-analyzer（import deps + co-change risk），再並行啟動 7 個專項 agent，confidence &lt; 80% 自動過濾</li>
         <li><strong>多平台 PR Review</strong> — 自動偵測 GitHub（需 <code>gh</code> CLI）與 Bitbucket Cloud（需環境變數）</li>
         <li><strong>Auto-trigger Skills</strong> — 根據任務上下文自動啟動安全掃描，無需手動呼叫</li>
       </ul>
@@ -865,7 +865,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
     <!-- /review-pr -->
     <section class="doc-section" id="cmd-review-pr">
       <h2>/review-pr <span class="h2-tag">command</span></h2>
-      <p>同時啟動 6 個專項 agent 對同一 PR 進行並行審查，再彙整去重並排序 finding。confidence &lt; 80% 自動過濾。所有 HIGH / CRITICAL finding 須通過 <code>verification-reviewer</code>（Step 3.5）二次確認後才納入報告。</p>
+      <p>先執行 <code>code-graph-analyzer</code>（import dependency + co-change 風險，結果快取於 <code>.claude/code-graph/</code>），再並行啟動 7 個專項 agent 對同一 PR 進行審查，彙整去重並排序 finding。confidence &lt; 80% 自動過濾。所有 HIGH / CRITICAL finding 須通過 <code>verification-reviewer</code>（Step 3.5）二次確認後才納入報告。</p>
 
       <div class="codeblock">
         <div class="codeblock-header">

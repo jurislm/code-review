@@ -62,7 +62,7 @@ code-review plugin
 │   ├── /review-pr            七 agent 並行 + --focus 過濾
 │   └── /python-review ... /flutter-review  語言專項
 │
-├── Agents（25 個 reviewer agents）
+├── Agents（27 個 agent）
 │   ├── 通用主審
 │   │   ├── code-reviewer          主審，含 false positive 過濾
 │   │   ├── security-reviewer      OWASP Top 10，遇 CRITICAL 警報
@@ -293,7 +293,7 @@ code-review/
 ├── .claude-plugin/
 │   ├── plugin.json          # Plugin manifest
 │   └── marketplace.json     # Marketplace 發布設定
-├── agents/                  # 25 個 reviewer agents
+├── agents/                  # 27 個 agent
 ├── commands/                # 9 個 slash commands
 └── skills/                  # 3 個 review skills
     ├── security-review/
