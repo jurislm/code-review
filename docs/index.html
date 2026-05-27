@@ -876,7 +876,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
           </div>
           syntax
         </div>
-        <pre><code>/review-pr [pr-number | pr-url] [--focus &lt;area&gt;]</code></pre>
+        <pre><code>/review-pr [pr-number | pr-url] [--focus comments|tests|errors|types|code|simplify]</code></pre>
       </div>
 
       <div class="codeblock">
@@ -889,10 +889,12 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
           examples
         </div>
         <pre><code><span class="c-cmd">/review-pr</span> <span class="c-arg">123</span>
-<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus security</span>
-<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus performance</span>
+<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus comments</span>
+<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus tests</span>
+<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus errors</span>
 <span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus types</span>
-<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus tests</span></code></pre>
+<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus code</span>
+<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus simplify</span></code></pre>
       </div>
 
       <h3>並行 Agents</h3>
