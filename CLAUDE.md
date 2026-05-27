@@ -12,6 +12,15 @@ Claude Code plugin，提供完整 code review 生態系統。
 - **版本**: v1.2.0
 - **License**: MIT
 
+## 常用操作速查
+
+| 想做什麼 | 參考章節 |
+|---------|---------|
+| 新增 agent / command / skill | [修改指引](#修改指引) |
+| 本地測試 plugin 變更 | [本地驗證](#本地驗證) |
+| 建立 PR | [分支工作流](#分支工作流) |
+| commit type 選哪個 | [Commit Type 指引](#commit-type-指引release-please) |
+
 ## 無 Build 步驟
 
 這是純 Markdown 內容 repo，無 `package.json`、無測試、無 lint 指令。「工作內容」= agent / command / skill `.md` 檔案 + `docs/index.html`。
@@ -114,6 +123,24 @@ Landing page 是純 HTML，直接編輯 `docs/index.html`。push 到 `main` 後 
 ### 更新 Plugin Manifest
 
 手動同步 `plugin.json` 和 `marketplace.json` 的 `keywords`、`description`（`version` 由 Release Please 自動同步，勿手動修改）。
+
+## 本地驗證
+
+修改 agent / command / skill 後，commit 前先驗：
+
+```bash
+# 重新載入 plugin（若已透過 /plugin 安裝本 repo）
+/reload-plugins
+
+# 快速確認 agent frontmatter 格式（name/description/color 必填）
+grep -l "^---" agents/*.md | xargs -I{} head -10 {}
+```
+
+commit checklist：
+- [ ] 更新 `README.md` 對應表格
+- [ ] 更新 `docs/index.html` stats 數字
+- [ ] 更新本 `CLAUDE.md` 的計數（Agents 清單 / Commands 清單）
+- [ ] commit type 用 `feat:`（非 `docs:`）才會觸發 Release Please
 
 ## 設計原則（勿破壞）
 
