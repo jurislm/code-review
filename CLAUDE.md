@@ -19,7 +19,7 @@ Claude Code plugin，提供完整 code review 生態系統。
 ## 目錄結構
 
 ```
-agents/          # 24 個 agent（frontmatter: name/description/tools/model/color）
+agents/          # 25 個 agent（frontmatter: name/description/tools/model/color）
 commands/        # 9 個 slash command（/code-review、/review-pr、語言專項）
 skills/          # 3 個自動觸發 skill（security-review/security-scan/flutter-dart-code-review）
 docs/            # Landing page（GitHub Pages，純 HTML）
@@ -121,11 +121,12 @@ Landing page 是純 HTML，直接編輯 `docs/index.html`。push 到 `main` 後 
 4. **HIGH/CRITICAL 三要素** — 精確行號 + 具體失敗場景 + 現有 guard 為何不夠
 5. **False positive 過濾** — 排除 magic number、fire-and-forget、test fixture 等常見誤判
 
-## Agents 清單（24 個）
+## Agents 清單（25 個）
 
 ### 通用主審
 - `code-reviewer`（green）— 主審，含 false positive 過濾
 - `security-reviewer`（red）— OWASP Top 10，遇 CRITICAL 警報
+- `verification-reviewer`（orange）— 第二道驗證，在輸出前過濾 HIGH/CRITICAL false positive
 
 ### `/review-pr` 協作（5 個）
 - `comment-analyzer` · `pr-test-analyzer` · `silent-failure-hunter` · `type-design-analyzer` · `code-simplifier`

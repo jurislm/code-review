@@ -1,6 +1,6 @@
 ---
 description: Code review — local uncommitted changes or GitHub/Bitbucket PR (pass PR number/URL for PR mode)
-argument-hint: [pr-number | pr-url | --from=<commit> | blank for local review]
+argument-hint: [pr-number | pr-url | --from=<commit> | --profile=chill|assertive | blank for local review]
 ---
 
 # Code Review
@@ -18,6 +18,12 @@ If `$ARGUMENTS` is blank:
 
 If `$ARGUMENTS` contains `--from=<commit>`:
 → Use **Incremental Local Review Mode** — same as Local Review Mode but only reviews files changed since `<commit>` (e.g. `--from=main`, `--from=HEAD~3`, `--from=abc1234`).
+
+If `$ARGUMENTS` contains `--profile=chill`:
+→ **Chill profile** — output only CRITICAL and HIGH findings. Skip MEDIUM, LOW, and NITPICK entirely. Best for fast-moving feature branches.
+
+If `$ARGUMENTS` contains `--profile=assertive` or no `--profile` flag:
+→ **Assertive profile** (default) — output all severity levels including NITPICK. Best for PR reviews targeting main/release branches.
 
 If `$ARGUMENTS` contains a PR number, PR URL, or `--pr`:
 
@@ -141,6 +147,12 @@ Build review context:
    **Python:** `ruff check . 2>&1 | head -60`
 
    Store this output. Any `file:line` flagged here → review that location with elevated priority in Phase 3.
+
+7. **CI check status** — Read the current CI check results to surface known failures as review context:
+   ```bash
+   gh pr checks <NUMBER> 2>/dev/null | head -30
+   ```
+   If any checks are failing, note them at the top of Phase 3 with `⚠️ CI failing: <check_name>` and treat the related code paths as elevated-priority review areas. Do not block the review — just elevate priority.
 
 ### Phase 3 — REVIEW
 
