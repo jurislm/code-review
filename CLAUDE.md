@@ -122,6 +122,8 @@ Landing page 是純 HTML，直接編輯 `docs/index.html`。push 到 `main` 後 
 3. **零 finding 合法** — clean code → APPROVE
 4. **HIGH/CRITICAL 三要素** — 精確行號 + 具體失敗場景 + 現有 guard 為何不夠
 5. **False positive 過濾** — 排除 magic number、fire-and-forget、test fixture 等常見誤判
+6. **Verification gate** — `/review-pr` Step 3.5 由 `verification-reviewer` 對 HIGH/CRITICAL 執行三道關卡二次確認；CRITICAL 不可被移除（最多降為 HIGH）
+7. **NITPICK 分層** — 純風格偏好歸類為 NITPICK；`--profile=chill` 時略過，`--profile=assertive`（預設）時顯示
 
 ## Agents 清單（25 個）
 
