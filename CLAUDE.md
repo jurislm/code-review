@@ -43,8 +43,8 @@ GitHub 用戶無需額外設定（使用 `gh` CLI）。
 
 ## 版本同步（必做）
 
-`plugin.json` 和 `marketplace.json` 的 `version` 欄位**必須手動保持一致**。  
-目前 `plugin.json` v1.2.0 / `marketplace.json` v1.0.0（drift 中）。每次版本 bump 兩個檔案都要更新。
+`plugin.json` 和 `marketplace.json` 的 `version` 欄位**必須手動保持一致**——兩者不由 Release Please 自動同步。
+每次版本 bump 後，用 `grep '"version"' .claude-plugin/plugin.json .claude-plugin/marketplace.json` 確認一致。
 
 ## Agent Frontmatter 必填欄位
 
@@ -103,7 +103,7 @@ Landing page 是純 HTML，直接編輯 `docs/index.html`。push 到 `main` 後 
 ### 語言 / 框架專項（17 個）
 詳見 `agents/`；特殊：`healthcare-reviewer` 使用 `opus`（其餘皆 `sonnet`）。
 
-## Commands 清單（9 個）
+## Commands 清單
 
 | 檔案 | Slash command | 備註 |
 |------|--------------|------|
