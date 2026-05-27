@@ -128,8 +128,25 @@ Build review context:
    grep -r "SymbolName" --include="*.{ts,tsx,js,jsx,py,go,rs}" -l . | head -10
    ```
    Read **3–5 most relevant callers**. Document any that make behavioral assumptions about the changed code (return type, thrown errors, side effects). Skip private/internal symbols used only within the same file.
+6. **Static analysis — run before review, capture as context** — Execute fast linters and type checker now. Do not fail on findings; treat output as signals for Phase 3:
+
+   **Node.js / TypeScript:**
+   ```bash
+   npx tsc --noEmit 2>&1 | head -60
+   npm run lint -- --format=compact 2>&1 | head -60
+   ```
+   **Rust:** `cargo clippy 2>&1 | head -60`
+   **Go:** `go vet ./... 2>&1 | head -60`
+   **Python:** `ruff check . 2>&1 | head -60`
+
+   Store this output. Any `file:line` flagged here → review that location with elevated priority in Phase 3.
 
 ### Phase 3 — REVIEW
+
+**Cross-reference static analysis signals first** — Check the linter/typecheck output captured in Phase 2 Step 6. For any `file:line` already flagged:
+- Treat as elevated-confidence finding (linter + code review = double signal)
+- Include the linter rule in the finding description
+- Skip re-flagging if the linter message is already precise and actionable
 
 Read each changed file **in full** (not just the diff hunks — you need surrounding context).
 
@@ -169,22 +186,18 @@ Detect the project type from config files (`package.json`, `Cargo.toml`, `go.mod
 
 **Node.js / TypeScript** (has `package.json`):
 ```bash
-npm run typecheck 2>/dev/null || npx tsc --noEmit 2>/dev/null  # Type check
-npm run lint                                                    # Lint
-npm test                                                        # Tests
-npm run build                                                   # Build
+npm test        # Tests
+npm run build   # Build
 ```
 
 **Rust** (has `Cargo.toml`):
 ```bash
-cargo clippy -- -D warnings  # Lint
-cargo test                   # Tests
-cargo build                  # Build
+cargo test   # Tests
+cargo build  # Build
 ```
 
 **Go** (has `go.mod`):
 ```bash
-go vet ./...    # Lint
 go test ./...   # Tests
 go build ./...  # Build
 ```
@@ -193,6 +206,8 @@ go build ./...  # Build
 ```bash
 pytest  # Tests
 ```
+
+> lint + typecheck already ran in Phase 2 Step 6 — record those results here; only re-run test + build.
 
 Run only the commands that apply to the detected project type. Record pass/fail for each.
 

@@ -43,6 +43,16 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
      grep -r "SymbolName" --include="*.{ts,tsx,js,jsx,py,go,rs}" -l . | head -10
      ```
      Read **3–5 most relevant call sites**. Flag any caller that makes assumptions about the changed behavior (return type, side effects, throw contract). Skip private helpers and test-only symbols.
+   - Run fast static analysis and capture output as context for the parallel agents:
+     ```bash
+     # Node.js/TS
+     npx tsc --noEmit 2>&1 | head -60
+     npm run lint -- --format=compact 2>&1 | head -60
+     # Rust: cargo clippy 2>&1 | head -60
+     # Go:   go vet ./... 2>&1 | head -60
+     # Python: ruff check . 2>&1 | head -60
+     ```
+     Pass linter output alongside the diff when launching each agent in Step 3.
 
 3. Run specialized review agents in parallel:
    - `code-reviewer`
