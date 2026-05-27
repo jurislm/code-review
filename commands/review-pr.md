@@ -36,8 +36,13 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
      "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/diff"
    ```
 
-2. Find project guidance:
-   - look for `CLAUDE.md`, lint config, TypeScript config, repo conventions
+2. Find project guidance and trace call context:
+   - Read `CLAUDE.md`, lint config, TypeScript config, repo conventions
+   - For each modified exported function, class, or method identified in the diff, trace its callers:
+     ```bash
+     grep -r "SymbolName" --include="*.{ts,tsx,js,jsx,py,go,rs}" -l . | head -10
+     ```
+     Read **3–5 most relevant call sites**. Flag any caller that makes assumptions about the changed behavior (return type, side effects, throw contract). Skip private helpers and test-only symbols.
 
 3. Run specialized review agents in parallel:
    - `code-reviewer`

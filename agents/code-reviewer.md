@@ -23,7 +23,21 @@ When invoked:
 
 1. **Gather context** — Run `git diff --staged` and `git diff` to see all changes. If no diff, check recent commits with `git log --oneline -5`.
 2. **Understand scope** — Identify which files changed, what feature/fix they relate to, and how they connect.
-3. **Read surrounding code** — Don't review changes in isolation. Read the full file and understand imports, dependencies, and call sites.
+3. **Read surrounding code and trace callers** — Don't review changes in isolation. Read the full file and understand imports, dependencies, and call sites.
+
+   **Caller Tracing** (required for any modified exported function, method, or class):
+   ```bash
+   # Find all files that reference the changed symbol — adapt extension list to the project's language
+   grep -r "SymbolName" --include="*.ts" --include="*.tsx" \
+     --include="*.js" --include="*.py" --include="*.go" --include="*.rs" -l . | head -10
+   ```
+   Read the **3–5 most relevant callers**. Look for:
+   - Callers that assume specific return types, argument shapes, or throw behavior
+   - Callers that rely on side effects being preserved
+   - Tests that encode the old contract
+
+   Skip tracing for: private helpers, test utilities, and symbols used only within the same file.
+
 4. **Apply review checklist** — Work through each category below, from CRITICAL to LOW.
 5. **Report findings** — Use the output format below. Only report issues you are confident about (>80% sure it is a real problem).
 
