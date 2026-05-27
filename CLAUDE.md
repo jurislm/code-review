@@ -28,7 +28,7 @@ docs/            # Landing page（GitHub Pages，純 HTML）
 
 ## 分支工作流
 
-日常開發在 `.worktrees/develop`，完成後 PR `develop → main`（push to main = plugin marketplace 自動發布）。
+日常開發在 `.worktrees/develop`，完成後 PR `develop → main`；`feat`/`fix` commits 累積後，Release Please 在 main 自動建立 release PR，合入該 PR = 新版本發布。
 
 建立 PR 後必須設定 labels 和 assignee（GitHub MCP 不支援，一律用 `gh api`）：
 
