@@ -24,8 +24,8 @@ If no PR is specified, review the current branch's PR. If no focus is specified,
    gh pr diff [number]
    # Fetch linked issues for PR intent context (Fixes/Closes/Resolves/Related to #N)
    gh pr view [number] --json body --jq '.body' | \
-     grep -oP '(?i)(?:Fixes|Closes|Resolves|Related to)\s+#\K\d+' | sort -u | \
-     xargs -I{} gh issue view {} --json number,title,body 2>/dev/null
+     perl -ne 'print "$1\n" if /(?:Fixes|Closes|Resolves|Related to)\s+#(\d+)/i' | sort -u | \
+     while read num; do gh issue view "$num" --json number,title,body 2>/dev/null; done
    ```
 
    **Bitbucket:**

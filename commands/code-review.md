@@ -41,7 +41,7 @@ Comprehensive security and quality review of uncommitted changes.
 git diff --name-only HEAD
 
 # Incremental review (--from=<commit> specified)
-git diff --name-only <commit>..HEAD
+git diff --name-only <commit>
 ```
 
 Use the incremental form when `--from=<commit>` is specified; pass the same `<commit>` ref to `git diff` in Phase 2 as well.
@@ -118,8 +118,8 @@ Build review context:
 3. **PR intent** — Parse PR description for goals, linked issues, test plans. Explicitly fetch any linked issues:
    ```bash
    gh pr view <NUMBER> --json body --jq '.body' | \
-     grep -oP '(?i)(?:Fixes|Closes|Resolves|Related to)\s+#\K\d+' | sort -u | \
-     xargs -I{} gh issue view {} --json number,title,body 2>/dev/null
+     perl -ne 'print "$1\n" if /(?:Fixes|Closes|Resolves|Related to)\s+#(\d+)/i' | sort -u | \
+     while read num; do gh issue view "$num" --json number,title,body 2>/dev/null; done
    ```
    Include issue title and description as review context — understanding PR intent reduces false positives.
 4. **Changed files** — List all modified files and categorize by type (source, test, config, docs)
