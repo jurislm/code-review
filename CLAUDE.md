@@ -9,7 +9,7 @@ Claude Code plugin，提供完整 code review 生態系統。
 - **Repo**: https://github.com/jurislm/code-review
 - **Landing page**: https://jurislm.github.io/code-review/（GitHub Pages，從 `docs/` 提供）
 - **Plugin marketplace**: `jurislm/code-review`（在 Claude Code 中 `/plugin` 搜尋安裝）
-- **版本**: v1.2.0
+- **版本**: v1.3.0
 - **License**: MIT
 
 ## 常用操作速查
