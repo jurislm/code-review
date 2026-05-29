@@ -1,6 +1,6 @@
 ---
 name: security-review
-description: Use this skill when adding authentication, handling user input, working with secrets, creating API endpoints, or implementing payment/sensitive features. Provides comprehensive security checklist and patterns.
+description: This skill should be used when the user is adding authentication or authorization, handling user input or file uploads, working with secrets or credentials, creating API endpoints, implementing payment or sensitive-data features, or integrating third-party APIs. Provides a comprehensive security checklist with FAIL/PASS code examples covering secrets management, input validation, authentication, cryptography, and dependency security.
 ---
 
 # Security Review Skill
