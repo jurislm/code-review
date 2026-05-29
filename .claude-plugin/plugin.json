@@ -1,6 +1,6 @@
 {
   "name": "code-review",
-  "version": "1.3.0",
+  "version": "2.0.0",
   "description": "Complete code review ecosystem: 27 reviewer agents (17 language/framework, auto-dispatched by file type), a single /code-review command for local and GitHub/Bitbucket PR review, and security scanning skills",
   "author": {
     "name": "Terry Chen",
