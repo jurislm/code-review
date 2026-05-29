@@ -645,13 +645,12 @@
       <a class="nav-link" href="#installation"><span class="dot"></span>Installation</a>
     </div>
     <div class="nav-group">
-      <div class="nav-group-label">Commands</div>
+      <div class="nav-group-label">Command</div>
       <a class="nav-link" href="#commands"><span class="dot"></span>/code-review</a>
       <a class="nav-sub-link" href="#cmd-local">Local mode</a>
       <a class="nav-sub-link" href="#cmd-pr">PR mode</a>
+      <a class="nav-sub-link" href="#cmd-dispatch">Auto-dispatch</a>
       <a class="nav-sub-link" href="#cmd-bitbucket">Bitbucket</a>
-      <a class="nav-link" href="#cmd-review-pr"><span class="dot"></span>/review-pr</a>
-      <a class="nav-link" href="#cmd-lang"><span class="dot"></span>Language commands</a>
     </div>
     <div class="nav-group">
       <div class="nav-group-label">Agents</div>
@@ -683,7 +682,7 @@
       <div class="badges">
         <span class="badge badge-gray">MIT License</span>
         <span class="badge badge-lime">27 Agents</span>
-        <span class="badge badge-blue">9 Commands</span>
+        <span class="badge badge-blue">1 Unified Command</span>
         <span class="badge badge-purple">3 Skills</span>
         <span class="badge badge-gray">Claude Code Plugin</span>
       </div>
@@ -694,8 +693,8 @@
           <div class="stat-label">Reviewer Agents</div>
         </div>
         <div class="stat-item">
-          <div class="stat-num" data-count="9">9</div>
-          <div class="stat-label">Slash Commands</div>
+          <div class="stat-num" data-count="1">1</div>
+          <div class="stat-label">Unified Command</div>
         </div>
         <div class="stat-item">
           <div class="stat-num" data-count="3">3</div>
@@ -712,7 +711,7 @@
       </div>
 
       <p class="lead">
-        完整 code review 生態系統，以 Claude Code plugin 形式發布。提供 27 個 agent（含 Code Graph Analyzer、語言/框架專項 reviewer、Verification 等）、9 個 slash command、以及 3 個自動觸發的安全 review skill。
+        完整 code review 生態系統，以 Claude Code plugin 形式發布。提供 27 個 agent（含 Code Graph Analyzer、語言/框架專項 reviewer、Verification 等）、單一 <code>/code-review</code> command（自動偵測語言/框架並 dispatch 對應 agent）、以及 3 個自動觸發的安全 review skill。
       </p>
 
       <div class="callout callout-tip">
@@ -725,8 +724,9 @@
 
       <h3>核心特性</h3>
       <ul>
+        <li><strong>單一 <code>/code-review</code>，自動 dispatch</strong> — 一個 command 處理全部。依變更檔案副檔名自動偵測語言/框架（<code>.py</code>→python-reviewer、<code>.go</code>→go-reviewer，Django/FastAPI/Flutter 以內容輔助），自動加對應專項 agent，不需記每個語言的 command</li>
         <li><strong>27 個 Agent</strong> — 涵蓋 TypeScript、Python、Go、Rust、Java、Kotlin、Swift、C++、C#、F#、Django、FastAPI、Flutter、Database、Healthcare（PHI/HIPAA）、ML pipeline + Code Graph Analyzer + Verification + PR Walkthrough</li>
-        <li><strong>Code Graph + 八 Agent 並行 PR Review</strong> — <code>/review-pr</code> 先執行 code-graph-analyzer（import deps + co-change risk），再並行啟動 8 個專項 agent，confidence &lt; 80% 自動過濾</li>
+        <li><strong>Code Graph + 八 Agent 並行 PR Review</strong> — PR 模式先執行 code-graph-analyzer（import deps + co-change risk），再並行啟動 8 通用 agent + 自動 dispatch 的語言 agent，confidence &lt; 80% 自動過濾</li>
         <li><strong>多平台 PR Review</strong> — 自動偵測 GitHub（需 <code>gh</code> CLI）與 Bitbucket Cloud（需環境變數）</li>
         <li><strong>Auto-trigger Skills</strong> — 根據任務上下文自動啟動安全掃描，無需手動呼叫</li>
       </ul>
@@ -785,7 +785,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
     <!-- /code-review -->
     <section class="doc-section" id="commands">
       <h2>/code-review <span class="h2-tag">command</span></h2>
-      <p>本地 uncommitted 變更 review 或 GitHub / Bitbucket PR review，自動偵測模式。</p>
+      <p>唯一的 review 入口。依參數自動切換本地 / GitHub PR / Bitbucket PR 模式，並依變更檔案自動偵測語言/框架、dispatch 對應的專項 reviewer agent — 不需為每個語言記不同 command。</p>
 
       <div class="codeblock">
         <div class="codeblock-header">
@@ -796,11 +796,11 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
           </div>
           syntax
         </div>
-        <pre><code>/code-review [pr-number | pr-url | blank] [--profile=chill|assertive]</code></pre>
+        <pre><code>/code-review [pr-number | pr-url | --from=&lt;commit&gt; | blank] [--focus=comments|tests|errors|types|code|simplify] [--profile=chill|assertive]</code></pre>
       </div>
 
       <h3 id="cmd-local">Local Review Mode</h3>
-      <p>不傳參數時進入本地模式，對目前 uncommitted 變更進行審查。</p>
+      <p>不傳參數時進入本地模式，對目前 uncommitted 變更跑<strong>與 PR 模式相同的完整並行 stack</strong>（code-graph 前置 + 八通用 agent + 自動 dispatch 語言 agent + verification），只是結果輸出到終端機、不發佈。傳 <code>--from=&lt;commit&gt;</code> 則只審查自該 commit 以來的變更。</p>
       <div class="codeblock">
         <div class="codeblock-header">
           <div class="cb-dots">
@@ -812,12 +812,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         </div>
         <pre><code><span class="c-cmd">/code-review</span></code></pre>
       </div>
-      <p>執行流程：</p>
-      <ol>
-        <li><strong>GATHER</strong> — <code>git diff --name-only HEAD</code> 收集變更檔案；無變更則停止</li>
-        <li><strong>REVIEW</strong> — 讀每個變更檔案全文，對照安全與品質清單</li>
-        <li><strong>REPORT</strong> — 依 CRITICAL → HIGH → MEDIUM → LOW 輸出 finding</li>
-      </ol>
+      <p>執行流程：GATHER（<code>git diff</code> 收集變更）→ Classify &amp; Dispatch → Context &amp; Code Graph → Parallel Review（8 通用 agent + 自動 dispatch 語言 agent）→ Verification（Phase 3.5）→ Aggregate → 依 CRITICAL → HIGH → MEDIUM → LOW 輸出 finding（不發佈）。</p>
 
       <h3 id="cmd-pr">GitHub PR Review Mode</h3>
       <p>傳入 PR 號碼或 GitHub URL，需本機安裝 <code>gh</code> CLI 並已登入。</p>
@@ -833,7 +828,40 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         <pre><code><span class="c-cmd">/code-review</span> <span class="c-arg">123</span>
 <span class="c-cmd">/code-review</span> <span class="c-arg">https://github.com/owner/repo/pull/123</span></code></pre>
       </div>
-      <p>執行流程（8 phases）：Fetch → Context → Review → Validate → Decide → Report → Publish → Output</p>
+      <p>PR 模式為完整並行流程：Fetch → Classify &amp; <strong>Dispatch</strong> → Context → Code Graph → <strong>Parallel Review</strong>（8 通用 agent + 自動 dispatch 的語言 agent）→ <strong>Verification</strong>（Phase 3.5）→ Aggregate → Decide → Report → Publish → Output。HIGH/CRITICAL finding 由 <code>verification-reviewer</code> 三道關卡二次確認後才納入。</p>
+
+      <h3 id="cmd-dispatch">語言 / 框架自動 Dispatch</h3>
+      <p>兩種模式都會依變更檔案自動加上對應的專項 reviewer。<strong>偵測到才加，零匹配不浪費</strong>。</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>變更檔案</th><th>自動加入的 agent</th></tr></thead>
+          <tbody>
+            <tr><td><code>.ts</code> · <code>.tsx</code> · <code>.js</code> · <code>.vue</code> · <code>.svelte</code></td><td><code>typescript-reviewer</code></td></tr>
+            <tr><td><code>.py</code></td><td><code>python-reviewer</code>（<code>from django</code> → +<code>django-reviewer</code>；<code>from fastapi</code> → +<code>fastapi-reviewer</code>）</td></tr>
+            <tr><td><code>.go</code> · <code>.rs</code> · <code>.kt</code> · <code>.swift</code> · <code>.java</code> · <code>.cs</code> · <code>.cpp</code>/<code>.c</code>/<code>.h</code> · <code>.fs</code></td><td>對應語言 reviewer</td></tr>
+            <tr><td><code>.dart</code>（+ <code>pubspec.yaml</code>）</td><td><code>flutter-reviewer</code></td></tr>
+            <tr><td><code>.sql</code> / migration 目錄</td><td><code>database-reviewer</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><code>network-config-reviewer</code> / <code>healthcare-reviewer</code> / <code>mle-reviewer</code> 為內容導向（無可靠副檔名），依上下文相關性加入。</p>
+
+      <h3 id="cmd-focus">--focus 過濾（PR 模式）</h3>
+      <p><code>code-reviewer</code> 與自動 dispatch 的語言 agent 永遠執行；<code>--focus</code> 只縮減通用 agent 子集：</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th><code>--focus</code></th><th>執行的通用 agent</th></tr></thead>
+          <tbody>
+            <tr><td><em>(none)</em></td><td>全部 8 個通用 agent</td></tr>
+            <tr><td><code>comments</code></td><td><code>code-reviewer</code> + <code>comment-analyzer</code></td></tr>
+            <tr><td><code>tests</code></td><td><code>code-reviewer</code> + <code>pr-test-analyzer</code></td></tr>
+            <tr><td><code>errors</code></td><td><code>code-reviewer</code> + <code>silent-failure-hunter</code></td></tr>
+            <tr><td><code>types</code></td><td><code>code-reviewer</code> + <code>type-design-analyzer</code></td></tr>
+            <tr><td><code>code</code></td><td><code>code-reviewer</code> + <code>security-reviewer</code></td></tr>
+            <tr><td><code>simplify</code></td><td><code>code-reviewer</code> + <code>code-simplifier</code></td></tr>
+          </tbody>
+        </table>
+      </div>
 
       <h3 id="cmd-profile">Review Profile</h3>
       <p>控制 NITPICK 級別 finding 的顯示與否：</p>
@@ -863,22 +891,10 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
       </div>
     </section>
 
-    <!-- /review-pr -->
+    <!-- PR Mode — parallel stack -->
     <section class="doc-section" id="cmd-review-pr">
-      <h2>/review-pr <span class="h2-tag">command</span></h2>
-      <p>先執行 <code>code-graph-analyzer</code>（import dependency + co-change 風險，結果快取於 <code>.claude/code-graph/</code>），再並行啟動 8 個專項 agent 對同一 PR 進行審查，彙整去重並排序 finding。confidence &lt; 80% 自動過濾。所有 HIGH / CRITICAL finding 須通過 <code>verification-reviewer</code>（Step 3.5）二次確認後才納入報告。</p>
-
-      <div class="codeblock">
-        <div class="codeblock-header">
-          <div class="cb-dots">
-            <div class="cb-dot" style="background:#c0392b"></div>
-            <div class="cb-dot" style="background:#e67e22"></div>
-            <div class="cb-dot" style="background:#27ae60"></div>
-          </div>
-          syntax
-        </div>
-        <pre><code>/review-pr [pr-number | pr-url] [--focus comments|tests|errors|types|code|simplify]</code></pre>
-      </div>
+      <h2>PR 模式 — 並行 Stack &amp; Verification <span class="h2-tag">/code-review</span></h2>
+      <p>傳入 PR 號/URL 時，<code>/code-review</code> 先執行 <code>code-graph-analyzer</code>（import dependency + co-change 風險，結果快取於 <code>.claude/code-graph/</code>），再並行啟動 8 個通用 agent + 依變更檔案自動 dispatch 的語言/框架 agent，彙整去重並排序 finding。confidence &lt; 80% 自動過濾。所有 HIGH / CRITICAL finding 須通過 <code>verification-reviewer</code>（Phase 3.5）二次確認後才納入報告。</p>
 
       <div class="codeblock">
         <div class="codeblock-header">
@@ -889,21 +905,20 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
           </div>
           examples
         </div>
-        <pre><code><span class="c-cmd">/review-pr</span> <span class="c-arg">123</span>
-<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus comments</span>
-<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus tests</span>
-<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus errors</span>
-<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus types</span>
-<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus code</span>
-<span class="c-cmd">/review-pr</span> <span class="c-arg">123</span> <span class="c-flag">--focus simplify</span></code></pre>
+        <pre><code><span class="c-cmd">/code-review</span> <span class="c-arg">123</span>
+<span class="c-cmd">/code-review</span> <span class="c-arg">123</span> <span class="c-flag">--focus comments</span>
+<span class="c-cmd">/code-review</span> <span class="c-arg">123</span> <span class="c-flag">--focus tests</span>
+<span class="c-cmd">/code-review</span> <span class="c-arg">123</span> <span class="c-flag">--focus errors</span>
+<span class="c-cmd">/code-review</span> <span class="c-arg">123</span> <span class="c-flag">--profile=chill</span></code></pre>
       </div>
 
-      <h3>並行 Agents</h3>
+      <h3>通用並行 Agents（8 個）</h3>
+      <p>另依變更檔案副檔名自動加入對應語言/框架 agent（見上方「語言 / 框架自動 Dispatch」）。</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Agent</th><th>負責範圍</th></tr></thead>
           <tbody>
-            <tr><td><code>code-reviewer</code></td><td>整體品質、安全性、可維護性，含 false positive 過濾</td></tr>
+            <tr><td><code>code-reviewer</code></td><td>整體品質、安全性、可維護性，含 false positive 過濾（anchor，永遠執行）</td></tr>
             <tr><td><code>security-reviewer</code></td><td>OWASP Top 10 分析；injection、SSRF、硬編碼 secrets、unsafe crypto</td></tr>
             <tr><td><code>comment-analyzer</code></td><td>行內 comment 準確性、完整性、rot 風險</td></tr>
             <tr><td><code>pr-test-analyzer</code></td><td>測試覆蓋率、行為涵蓋、真實 bug 防護</td></tr>
@@ -915,11 +930,11 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         </table>
       </div>
 
-      <h3>Step 3.5 — Verification Pass</h3>
+      <h3>Phase 3.5 — Verification Pass</h3>
       <p>並行 agents 完成後，所有 HIGH 與 CRITICAL finding 自動送入 <code>verification-reviewer</code> 執行二次確認（三道關卡驗證）。<strong>CONFIRMED</strong> finding 及 UNCERTAIN（降為 MEDIUM）的 finding 均進入最終報告；若本 PR diff 已修復問題，以「FIXED IN THIS PR」verdict 移除（不受 CRITICAL 保護限制）；CRITICAL finding 不可被完全移除，最多降為 HIGH。</p>
 
       <h3>Walkthrough &amp; Effort Score</h3>
-      <p>每次 <code>/review-pr</code> 輸出前先產生 Walkthrough 摘要，包含逐檔變更說明與 PR 複雜度評分：</p>
+      <p>PR 模式輸出前先產生 Walkthrough 摘要，包含逐檔變更說明與 PR 複雜度評分：</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>Effort Score</th><th>定義</th></tr></thead>
@@ -929,26 +944,6 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
             <tr><td><strong>3</strong></td><td>中型功能或重構，4–10 個檔案，含邏輯複雜度</td></tr>
             <tr><td><strong>4</strong></td><td>複雜重構、核心邏輯改寫，或超過 10 個檔案</td></tr>
             <tr><td><strong>5</strong></td><td>架構變更、DB schema migration、auth 系統或跨切面改動</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Language commands -->
-    <section class="doc-section" id="cmd-lang">
-      <h2>Language Commands <span class="h2-tag">commands</span></h2>
-      <p>語言專項 command，不傳參數則預設審查 staged changes；可傳入目錄或檔案路徑作為參數。</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Command</th><th>調用的 Agent</th><th>適用</th></tr></thead>
-          <tbody>
-            <tr><td><code>/python-review</code></td><td>python-reviewer</td><td>PEP 8、type hints、安全性、Pythonic idioms</td></tr>
-            <tr><td><code>/go-review</code></td><td>go-reviewer</td><td>idiomatic Go、並發安全、錯誤處理、效能</td></tr>
-            <tr><td><code>/rust-review</code></td><td>rust-reviewer</td><td>ownership、lifetimes、unsafe usage、慣用模式</td></tr>
-            <tr><td><code>/cpp-review</code></td><td>cpp-reviewer</td><td>記憶體安全、modern C++ idioms、並發、效能</td></tr>
-            <tr><td><code>/kotlin-review</code></td><td>kotlin-reviewer</td><td>idiomatic Kotlin、coroutine 安全、Compose</td></tr>
-            <tr><td><code>/fastapi-review</code></td><td>fastapi-reviewer</td><td>async 正確性、dependency injection、Pydantic</td></tr>
-            <tr><td><code>/flutter-review</code></td><td>flutter-reviewer</td><td>widget 最佳實踐、state management、效能</td></tr>
           </tbody>
         </table>
       </div>
@@ -988,11 +983,11 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         <div class="agent-dot" style="background:#b05a00"></div>
         <div class="agent-body">
           <div class="agent-name">verification-reviewer</div>
-          <div class="agent-desc">驗證 agent，對 HIGH / CRITICAL finding 執行二次確認（三道關卡：<code>grep -Fn</code> 確認程式碼存在、確認失敗場景可重現、檢查現有 guard 是否已覆蓋）。不產生新 finding。CONFIRMED 及 UNCERTAIN（降為 MEDIUM）finding 均保留；若問題已在本 PR diff 中修復，以「FIXED IN THIS PR」verdict 移除（不受 CRITICAL 保護限制）；CRITICAL finding 最多降為 HIGH，永不完全移除。由 <code>/review-pr</code> Step 3.5 自動調用。</div>
+          <div class="agent-desc">驗證 agent，對 HIGH / CRITICAL finding 執行二次確認（三道關卡：<code>grep -Fn</code> 確認程式碼存在、確認失敗場景可重現、檢查現有 guard 是否已覆蓋）。不產生新 finding。CONFIRMED 及 UNCERTAIN（降為 MEDIUM）finding 均保留；若問題已在本 PR diff 中修復，以「FIXED IN THIS PR」verdict 移除（不受 CRITICAL 保護限制）；CRITICAL finding 最多降為 HIGH，永不完全移除。由 <code>/code-review</code> PR 模式 Phase 3.5 自動調用。</div>
           <div class="agent-pills">
             <span class="pill pill-model">Sonnet</span>
             <span class="pill">Read · Grep · Glob · Bash</span>
-            <span class="pill">觸發：/review-pr 並行 agents 輸出後</span>
+            <span class="pill">觸發：/code-review PR 模式並行 agents 輸出後</span>
           </div>
         </div>
       </div>
@@ -1007,7 +1002,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         <div class="agent-dot" style="background:#1a7a88"></div>
         <div class="agent-body">
           <div class="agent-name">code-graph-analyzer</div>
-          <div class="agent-desc">預計算 Code Impact Map：L2 import dependency tracing（多語言 grep，單跳 BFS；支援 JS/TS、Python、Java/Kotlin、Rust、Swift、C#、Ruby、PHP）+ L3 co-change risk（git log 最近 50 commits）。結果快取於 <code>.claude/code-graph/</code>，下次相同 SHA 直接命中快取。由 <code>/review-pr</code> Step 2.5 和 <code>/code-review</code> Phase 2.5 自動調用。</div>
+          <div class="agent-desc">預計算 Code Impact Map：L2 import dependency tracing（多語言 grep，單跳 BFS；支援 JS/TS、Python、Java/Kotlin、Rust、Swift、C#、Ruby、PHP）+ L3 co-change risk（git log 最近 50 commits）。結果快取於 <code>.claude/code-graph/</code>，下次相同 SHA 直接命中快取。由 <code>/code-review</code> PR 模式 Phase 2.5 自動調用。</div>
           <div class="agent-pills"><span class="pill pill-model">Sonnet</span><span class="pill">Read · Grep · Glob · Bash · Write</span></div>
         </div>
       </div>
@@ -1016,7 +1011,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
     <!-- Agents — PR -->
     <section class="doc-section" id="agents-pr">
       <h2>Agents — PR 協作 <span class="h2-tag">agents</span></h2>
-      <p>以下 agent 由 <code>/review-pr</code> 並行調用，也可在對話中單獨使用。</p>
+      <p>以下 agent 由 <code>/code-review</code> PR 模式並行調用，也可在對話中單獨使用。</p>
 
       <div class="agent-card" style="--agent-color: #1a7a88">
         <div class="agent-dot" style="background:#1a7a88"></div>
@@ -1067,7 +1062,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         <div class="agent-dot" style="background:#1a5fa8"></div>
         <div class="agent-body">
           <div class="agent-name">pr-walkthrough-writer</div>
-          <div class="agent-desc">生成結構化 PR walkthrough：file-change 表格 + Mermaid sequence diagram（僅限 ≤10 個 LOGIC 檔案且流程清晰時）。作為 /review-pr 並行 agent 之一，產出的內容作為 PR 第一則獨立 comment。</div>
+          <div class="agent-desc">生成結構化 PR walkthrough：file-change 表格 + Mermaid sequence diagram（僅限 ≤10 個 LOGIC 檔案且流程清晰時）。作為 /code-review PR 模式並行 agent 之一，產出的內容作為 PR 第一則獨立 comment。</div>
           <div class="agent-pills"><span class="pill pill-model">Sonnet</span><span class="pill">Read · Grep · Glob · Bash</span></div>
         </div>
       </div>
@@ -1190,7 +1185,7 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
         <li><strong>零 finding 合法</strong> — clean code 應該得到 APPROVE，不強行挑毛病。</li>
         <li><strong>HIGH / CRITICAL 三要素</strong> — 精確行號 + 具體失敗場景 + 現有 guard 為何不夠，缺一不可。</li>
         <li><strong>False positive 過濾</strong> — 明確排除 LLM reviewer 常見誤判，包含：magic number（有命名常數時）、fire-and-forget（設計如此時）、test fixture（測試資料不算 magic number）、未修改的程式碼（除非 CRITICAL 安全問題）。</li>
-        <li><strong>Verification gate</strong> — <code>/review-pr</code> Step 3.5 由 <code>verification-reviewer</code> 對所有 HIGH / CRITICAL finding 執行三道關卡二次確認。CRITICAL finding 不可被完全移除，最多降為 HIGH。</li>
+        <li><strong>Verification gate</strong> — <code>/code-review</code> PR 模式 Phase 3.5 由 <code>verification-reviewer</code> 對所有 HIGH / CRITICAL finding 執行三道關卡二次確認。CRITICAL finding 不可被完全移除，最多降為 HIGH。</li>
         <li><strong>NITPICK 分層</strong> — 純風格偏好歸類為 NITPICK；<code>--profile=chill</code> 時略過 MEDIUM / LOW / NITPICK，<code>--profile=assertive</code>（預設）時顯示所有等級。</li>
       </ol>
     </section>
@@ -1202,17 +1197,14 @@ export BB_APP_PASSWORD=<span class="c-str">"your-app-password"</span></code></pr
       <h3>新增 Agent</h3>
       <ol>
         <li>在 <code>agents/</code> 建立 <code>&lt;name&gt;.md</code>，frontmatter 至少包含 <code>name</code>、<code>description</code>、<code>color</code>、<code>model</code>、<code>tools</code></li>
-        <li>若需加入 <code>/review-pr</code> 並行流程，更新 <code>commands/review-pr.md</code> 的 agent 列表</li>
+        <li>若是語言/框架專項，更新 <code>commands/code-review.md</code> 的「Language / Framework Auto-Dispatch」對照表，讓 <code>/code-review</code> 能依副檔名或內容特徵自動 dispatch</li>
+        <li>若是 PR 模式並行協作 agent，更新 <code>commands/code-review.md</code> Phase 3 的通用 agent 列表</li>
         <li>更新 <code>README.md</code> 的 Agents 表格</li>
         <li>更新 <code>docs/index.html</code> 的 agent 列表與 stats 數字</li>
       </ol>
 
-      <h3>新增 Command</h3>
-      <ol>
-        <li>在 <code>commands/</code> 建立 <code>&lt;name&gt;.md</code>，frontmatter 包含 <code>description</code>、<code>argument-hint</code></li>
-        <li>更新 <code>README.md</code> 的 Slash Commands 表格</li>
-        <li>更新 <code>docs/index.html</code> 的側欄導覽、Commands 區塊、stats 數字</li>
-      </ol>
+      <h3>修改 Command</h3>
+      <p>本 repo 只有單一 command <code>/code-review</code>。所有 review 能力（本地 / GitHub PR / Bitbucket PR / 多 agent 並行 / verification / 語言自動 dispatch）都在 <code>commands/code-review.md</code> 內。新增能力時直接擴充該檔，不另建 command；若改動使用者可見行為，同步更新 <code>README.md</code> 與 <code>docs/index.html</code>。</p>
 
       <h3>Agent Frontmatter 格式</h3>
       <div class="codeblock">
