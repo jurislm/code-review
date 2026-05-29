@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.0](https://github.com/jurislm/code-review/compare/v2.0.0...v3.0.0) (2026-05-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* /review-pr and all /<lang>-review commands are removed. Use /code-review for everything — language specialists are now dispatched automatically based on the changed files.
+
+### Documentation
+
+* sync version string to v2.0.0 ([#9](https://github.com/jurislm/code-review/issues/9)) ([21f6835](https://github.com/jurislm/code-review/commit/21f6835f91ec88e26f6980eb95e3154d44e09bce))
+
 ## [2.0.0](https://github.com/jurislm/code-review/compare/v1.3.0...v2.0.0) (2026-05-29)
 
 
