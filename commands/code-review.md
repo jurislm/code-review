@@ -1,10 +1,11 @@
 ---
-description: Code review — local uncommitted changes or GitHub/Bitbucket PR (pass PR number/URL for PR mode)
-argument-hint: [pr-number | pr-url | --from=<commit> | --profile=chill|assertive | blank for local review]
+description: Code review — auto-detects language/framework and dispatches the right specialist agents. Local diff or GitHub/Bitbucket PR (pass PR number/URL for PR mode).
+argument-hint: [pr-number | pr-url | --from=<commit> | --focus=comments|tests|errors|types|code|simplify | --profile=chill|assertive | blank for local review]
 ---
 
 # Code Review
 
+> The single entry point for all code review. It auto-detects the language and framework of the changed files and dispatches the matching specialist reviewer agents — no need to pick a per-language command.
 > PR review mode adapted from PRPs-agentic-eng by Wirasm. Part of the PRP workflow series.
 
 **Input**: $ARGUMENTS
@@ -13,32 +14,84 @@ argument-hint: [pr-number | pr-url | --from=<commit> | --profile=chill|assertive
 
 ## Mode Selection
 
-If `$ARGUMENTS` is blank:
-→ Use **Local Review Mode**.
+| `$ARGUMENTS` | Mode |
+|---|---|
+| Blank | **Local Review Mode** — full parallel review of uncommitted changes (no publish) |
+| `--from=<commit>` | **Incremental Local Review** — same as Local Mode but only files changed since `<commit>` (e.g. `--from=main`, `--from=HEAD~3`) |
+| PR number / PR URL / `--pr` | **PR Review Mode** — full parallel multi-agent stack + verification + publish |
 
-If `$ARGUMENTS` contains `--from=<commit>`:
-→ Use **Incremental Local Review Mode** — same as Local Review Mode but only reviews files changed since `<commit>` (e.g. `--from=main`, `--from=HEAD~3`, `--from=abc1234`).
+Both modes run the **same full pipeline** — code graph → parallel stack (8 general agents + auto-detected specialist agents) → verification pass → aggregate. The only difference:
+- **Local Mode** reviews the working-tree diff and reports findings to the terminal. It does NOT publish.
+- **PR Mode** fetches the PR, runs the identical review, and **publishes** the result to GitHub/Bitbucket (inline comments, review decision, walkthrough comment, PR-description summary).
 
-If `$ARGUMENTS` contains `--profile=chill`:
-→ **Chill profile** — output only CRITICAL and HIGH findings. Skip MEDIUM, LOW, and NITPICK entirely. Best for fast-moving feature branches.
+**Profile flag** (both modes):
+- `--profile=chill` → output only CRITICAL and HIGH. Skip MEDIUM, LOW, NITPICK. Best for fast-moving feature branches.
+- `--profile=assertive` (default) → output all severity levels including NITPICK. Best for PRs targeting main/release.
 
-If `$ARGUMENTS` contains `--profile=assertive` or no `--profile` flag:
-→ **Assertive profile** (default) — output all severity levels including NITPICK. Best for PR reviews targeting main/release branches.
+**Platform detection** (PR mode):
+- URL contains `bitbucket.org` → **Bitbucket PR Review**
+- URL contains `github.com`, or number only with a GitHub `origin` → **GitHub PR Review**
+- Number only → run `git remote get-url origin`; `bitbucket.org` → Bitbucket, otherwise GitHub
 
-If `$ARGUMENTS` contains a PR number, PR URL, or `--pr`:
+---
 
-1. Detect platform:
-   - URL contains `bitbucket.org` → **Bitbucket PR Review Mode**
-   - URL contains `github.com` → **GitHub PR Review Mode**
-   - Number only → run `git remote get-url origin`:
-     - Contains `bitbucket.org` → **Bitbucket PR Review Mode**
-     - Otherwise → **GitHub PR Review Mode**
+## Language / Framework Auto-Dispatch
+
+**This is the core of the unified command.** Both modes run this classification to decide which specialist agents to add. Agents are added **only when a matching file is detected** — zero matches means zero extra agents (no waste).
+
+### Step A — Map changed files to language agents (by extension)
+
+```bash
+# $CHANGED_FILES = newline-separated list of changed paths (set per mode below)
+SPECIALIST_AGENTS=""
+add_agent() { case "$SPECIALIST_AGENTS" in *"$1"*) ;; *) SPECIALIST_AGENTS="${SPECIALIST_AGENTS:+$SPECIALIST_AGENTS }$1" ;; esac; }
+
+while IFS= read -r file; do
+  [ -z "$file" ] && continue
+  case "$file" in
+    *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs|*.vue|*.svelte) add_agent typescript-reviewer ;;
+    *.py)            add_agent python-reviewer ;;
+    *.go)            add_agent go-reviewer ;;
+    *.rs)            add_agent rust-reviewer ;;
+    *.kt|*.kts)      add_agent kotlin-reviewer ;;
+    *.swift)         add_agent swift-reviewer ;;
+    *.java)          add_agent java-reviewer ;;
+    *.cs)            add_agent csharp-reviewer ;;
+    *.cpp|*.cc|*.cxx|*.c|*.h|*.hpp|*.hxx) add_agent cpp-reviewer ;;
+    *.fs|*.fsx)      add_agent fsharp-reviewer ;;
+    *.dart)          add_agent flutter-reviewer ;;
+    *.sql)           add_agent database-reviewer ;;
+  esac
+  # Migration files (framework-agnostic naming) → database-reviewer
+  case "$file" in *migrations/*|*migrate/*) add_agent database-reviewer ;; esac
+done <<< "$CHANGED_FILES"
+```
+
+### Step B — Framework detection (content-based, refines language agents)
+
+After the extension pass, inspect file content to add framework specialists. Only add when the signal is present in a changed file (grep the diff or the file at head):
+
+| Framework | Signal (in changed files) | Add agent |
+|---|---|---|
+| **Django** | `from django`, `models.Model`, `manage.py`, `settings.py`, `urls.py` | `django-reviewer` |
+| **FastAPI** | `from fastapi`, `APIRouter`, `@app.get`/`@router.` | `fastapi-reviewer` |
+| **Flutter** | `pubspec.yaml` present + any `.dart` file, or `package:flutter` import | `flutter-reviewer` |
+| **Database / Supabase** | `.sql`, migration dirs, `CREATE TABLE`, `supabase` client usage | `database-reviewer` |
+
+Two domains are **content-only** (no reliable extension) — add when context makes them relevant, otherwise skip:
+- **`network-config-reviewer`** — router/switch configs (Cisco IOS `interface`/`access-list`, JunOS), `.cfg`/`.conf` device configs
+- **`healthcare-reviewer`** (Opus) — PHI/HIPAA, EMR/EHR, clinical decision support code
+- **`mle-reviewer`** — ML training/serving, feature pipelines, `torch`/`sklearn`/model-serving code
+
+> Framework agents **supplement**, not replace, the language agent (e.g. a Django change runs both `python-reviewer` and `django-reviewer`).
+
+`$SPECIALIST_AGENTS` (deduplicated) is now the set of language/framework agents to add to the review.
 
 ---
 
 ## Local Review Mode
 
-Comprehensive security and quality review of uncommitted changes.
+Full parallel review of uncommitted changes — the same pipeline as PR mode, reported to the terminal instead of published.
 
 ### Phase 1 — GATHER
 
@@ -50,57 +103,43 @@ git diff --name-only HEAD
 git diff --name-only <commit>
 ```
 
-Use the incremental form when `--from=<commit>` is specified. In subsequent phases, use `git diff <commit>` (not `git diff <commit>..HEAD`) wherever a diff is needed — this includes any uncommitted working tree changes relative to `<commit>`, matching the Local Review Mode behaviour.
+Use the incremental form when `--from=<commit>` is specified. In later phases, use `git diff <commit>` (not `git diff <commit>..HEAD`) wherever a diff is needed — this includes uncommitted working-tree changes relative to `<commit>`.
 
 If no changed files, stop: "Nothing to review."
 
-### Phase 2 — REVIEW
+Set `CHANGED_FILES` from the output above.
 
-Read each changed file in full. Check for:
+### Phase 1.5 — CLASSIFY & DISPATCH
 
-**Security Issues (CRITICAL):**
-- Hardcoded credentials, API keys, tokens
-- SQL injection vulnerabilities
-- XSS vulnerabilities
-- Missing input validation
-- Insecure dependencies
-- Path traversal risks
+Run the same file classification as GitHub PR mode Phase 1.5 (populate `$LOGIC_FILES` / `$SECURITY_FILES`), then run **Language / Framework Auto-Dispatch** (above) to compute `$SPECIALIST_AGENTS`. Announce what was detected, e.g. `Detected: python-reviewer, django-reviewer`. The Fast Path (docs/config only → secret scan only) applies here too.
 
-**Code Quality (HIGH):**
-- Functions > 50 lines
-- Files > 800 lines
-- Nesting depth > 4 levels
-- Missing error handling
-- console.log statements
-- TODO/FIXME comments
-- Missing JSDoc for public APIs
+### Phase 2 — CONTEXT & CODE GRAPH
 
-**Best Practices (MEDIUM):**
-- Mutation patterns (use immutable instead)
-- Emoji usage in code/comments
-- Missing tests for new code
-- Accessibility issues (a11y)
+Run GitHub PR mode Phases 2 and 2.5 against the working tree: load project rules and `.claude/review-paths.yaml`, trace callers, run static analysis (capture as context), and run `code-graph-analyzer` (cache key `local-<sha8>` from `git rev-parse --short=8 HEAD`). Store the result as `IMPACT_MAP`.
 
-### Phase 3 — REPORT
+### Phase 3 — REVIEW (parallel agents)
 
-Generate report with:
-- Severity: CRITICAL, HIGH, MEDIUM, LOW
-- File location and line numbers
-- Issue description
-- Suggested fix
+Run the **full parallel agent pool** exactly as GitHub PR mode Phase 3: the 8 general agents (`code-reviewer` anchor + `security-reviewer` + the six collaborators) **plus** every agent in `$SPECIALIST_AGENTS`, each reading changed files in full from the working tree. `--focus` filtering and the always-on specialists apply identically.
 
-Block commit if CRITICAL or HIGH issues found.
-Never approve code with security vulnerabilities.
+### Phase 3.5 — VERIFICATION PASS
+
+Run `verification-reviewer` over all HIGH/CRITICAL findings, identical to GitHub PR mode Phase 3.5.
+
+### Phase 4 — AGGREGATE & REPORT
+
+Apply the same aggregation as PR mode Phase 4 (deduplicate, contradiction filter, **Confidence Rule**, **False-Positive Guard**, rank) and run the matching validation commands. Then output to the terminal grouped by severity (CRITICAL → HIGH → MEDIUM → LOW, plus NITPICK in assertive profile) — **no publish step**.
+
+Block the commit if CRITICAL or HIGH issues are found. Never approve code with security vulnerabilities.
 
 ---
 
 ## GitHub PR Review Mode
 
-Comprehensive GitHub PR review — fetches diff, reads full files, runs validation, posts review.
+Comprehensive GitHub PR review — full parallel agent stack, verification, walkthrough, and published review.
 
 ### Phase 1 — FETCH
 
-Parse input to determine PR:
+Parse input to determine the PR:
 
 | Input | Action |
 |---|---|
@@ -109,15 +148,15 @@ Parse input to determine PR:
 | Branch name | Find PR via `gh pr list --head <branch>` |
 
 ```bash
-gh pr view <NUMBER> --json number,title,body,author,baseRefName,headRefName,changedFiles,additions,deletions
+gh pr view <NUMBER> --json number,title,body,author,baseRefName,headRefName,headRefOid,changedFiles,additions,deletions
 gh pr diff <NUMBER>
 ```
 
-If PR not found, stop with error. Store PR metadata for later phases.
+If the PR is not found, stop with an error. Store PR metadata for later phases.
 
-### Phase 1.5 — CLASSIFY
+### Phase 1.5 — CLASSIFY & DISPATCH
 
-**Incremental review detection**: Check if this PR was previously reviewed; skip if no new commits:
+**Skip-if-unchanged gate** — if the PR HEAD has not changed since the last review, exit early:
 
 ```bash
 LAST_COMMIT_FILE=".claude/reviews/pr-<NUMBER>-last-commit.txt"
@@ -133,9 +172,9 @@ fi
 # LAST_COMMIT_FILE is written at the end of Phase 8 so the next run can skip if unchanged
 ```
 
-> Note: This is a **skip-if-unchanged** gate, not a diff-scoping mechanism. When new commits exist, the full PR diff is always reviewed. This ensures no regressions are missed from rebases or force-pushes.
+> This is a **skip-if-unchanged** gate, not a diff-scoping mechanism. When new commits exist, the full PR diff is always reviewed — no regressions missed from rebases or force-pushes.
 
-**File classification**: Route between Fast Path and Slow Path:
+**File classification** — route between Fast Path and Slow Path, and build the lists for dispatch:
 
 ```bash
 CHANGED_FILES=$(gh pr diff <NUMBER> --name-only | tr -d '\r')
@@ -161,27 +200,27 @@ while IFS= read -r file; do
 done <<< "$CHANGED_FILES"
 ```
 
-`$LOGIC_FILES` and `$SECURITY_FILES` are now available as space-separated lists for Phase 2.5.
+`$LOGIC_FILES` and `$SECURITY_FILES` are now available for Phase 2.5.
+
+**Language/framework dispatch** — run the **Language / Framework Auto-Dispatch** section (above) over `$CHANGED_FILES` to compute `$SPECIALIST_AGENTS`. These are added to the parallel pool in Phase 3.
 
 **Fast Path** (only DOCS + CONFIG + OTHER — zero LOGIC/SECURITY files):
-- Skip Phases 2, 3, 4, and 5 entirely
-- Run **secret scan only**: execute the static analysis / secret scan commands from Phase 2 Step 6 (linters + credential patterns)
-- If zero secrets or credentials found: post `gh pr review --approve` with brief note "Docs/config changes — no logic review needed" (Phase 7b), then proceed to Phase 8 (skip Phases 6 and 6.5)
-- If a secret/credential is detected: exit Fast Path and run the full Slow Path from Phase 2 onwards
+- Skip Phases 2, 2.5, 3, 3.5, 4
+- Run **secret scan only**: the static analysis / secret-scan commands from Phase 2 Step 6 (linters + credential patterns)
+- Zero secrets/credentials → post `gh pr review --approve` with note "Docs/config changes — no logic review needed" (Phase 7), then Phase 8
+- A secret/credential detected → exit Fast Path, run the full Slow Path from Phase 2
 
-**Slow Path** (any LOGIC or SECURITY file present): proceed to Phase 2 normally.
-
-**SECURITY files**: in Phase 3, pass `$SECURITY_FILES` explicitly to `security-reviewer` for prioritized analysis.
+**Slow Path** (any LOGIC or SECURITY file): proceed to Phase 2 normally.
 
 ### Phase 2 — CONTEXT
 
 Build review context:
 
-1. **Project rules** — Read `CLAUDE.md`, `.claude/docs/`, and any contributing guidelines. Also load path-based review rules if present:
+1. **Project rules** — Read `CLAUDE.md`, `.claude/docs/`, contributing guidelines. Load optional path rules if present:
    ```bash
    [ -f ".claude/review-paths.yaml" ] && cat ".claude/review-paths.yaml"
    ```
-   This is an **optional, user-created** file (not bundled with the plugin). If present, find the most specific matching `pattern` for each changed file and include its `rules` in the review prompt. Files matching a `skip` list have those check categories suppressed. Example schema to create in your project:
+   This is an **optional, user-created** file (not bundled). If present, apply the most specific matching `pattern`'s `rules` per changed file; files in a `skip` list have those categories suppressed. Example schema:
    ```yaml
    paths:
      - pattern: "src/api/**"
@@ -193,28 +232,25 @@ Build review context:
      - pattern: "**/*.test.ts"
        skip: [magic_numbers, function_length, console_log]
    ```
-2. **Planning artifacts** — Check `.claude/prds/`, `.claude/plans/`, `.claude/reviews/`, and legacy `.claude/PRPs/{prds,plans,reports,reviews}/` for context related to this PR
-3. **PR intent** — Parse PR description for goals, linked issues, test plans. Explicitly fetch any linked issues:
+2. **Planning artifacts** — Check `.claude/prds/`, `.claude/plans/`, `.claude/reviews/`, and legacy `.claude/PRPs/{prds,plans,reports,reviews}/`.
+3. **PR intent** — Parse the PR description for goals, linked issues, test plans. Fetch linked issues:
    ```bash
-   # Extracts all #N on each matching line (handles "Fixes #1, #2" correctly)
    gh pr view <NUMBER> --json body --jq '.body' | \
      perl -ne 'while (/(?:Fixes|Closes|Resolves|Related to)[^#]*#(\d+)/gi) { print "$1\n" }' | sort -u | \
      while read -r num; do gh issue view "$num" --json number,title,body 2>/dev/null; done
    ```
-   Include issue title and description as review context — understanding PR intent reduces false positives.
-4. **Changed files** — List all modified files and categorize by type (source, test, config, docs)
-5. **Caller tracing** — For each modified exported function, class, or method in the diff, find and read its call sites:
+   Understanding intent reduces false positives.
+4. **Changed files** — List and categorize (source, test, config, docs).
+5. **Caller tracing** — For each modified exported symbol, find call sites:
    ```bash
-   # -n outputs file:line:match, making it easy to pick the 3–5 most relevant callers
    grep -r "SymbolName" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" \
      --include="*.py" --include="*.go" --include="*.rs" -n . | head -20
    ```
-   Read **3–5 most relevant callers**. Document any that make behavioral assumptions about the changed code (return type, thrown errors, side effects). Skip private/internal symbols used only within the same file.
-6. **Static analysis — run before review, capture as context** — Execute fast linters and type checker now. Do not fail on findings; treat output as signals for Phase 3:
+   Read the **3–5 most relevant callers**. Note any that assume return type, thrown errors, or side effects. Skip private/internal symbols.
+6. **Static analysis — run before review, capture as context** — Execute fast linters + type checker now. Don't fail on findings; treat output as Phase 3 signals:
 
    **Node.js / TypeScript:**
    ```bash
-   # Append || true so pipefail environments don't abort context collection
    npx tsc --noEmit 2>&1 | head -60 || true
    npm run lint -- --format=compact 2>&1 | head -60 || true
    ```
@@ -222,126 +258,134 @@ Build review context:
    **Go:** `go vet ./... 2>&1 | head -60 || true`
    **Python:** `ruff check . 2>&1 | head -60 || true`
 
-   Store this output. Any `file:line` flagged here → review that location with elevated priority in Phase 3.
-
-7. **CI check status** — Read the current CI check results to surface known failures as review context:
+   Any `file:line` flagged here → review with elevated priority in Phase 3.
+7. **CI check status** — Surface known failures as context:
    ```bash
    gh pr checks <NUMBER> 2>/dev/null | head -30
    ```
-   If any checks are failing, note them at the top of Phase 3 with `⚠️ CI failing: <check_name>` and treat the related code paths as elevated-priority review areas. Do not block the review — just elevate priority.
+   Note failing checks at the top of Phase 3 with `⚠️ CI failing: <check_name>` and elevate those code paths. Do not block on it.
 
 ### Phase 2.5 — CODE GRAPH
 
-Run `code-graph-analyzer` **sequentially** (wait for result before starting Phase 3). This provides cross-file dependency context unavailable from the diff alone.
+Run `code-graph-analyzer` **sequentially** (wait for the result before Phase 3). Provides cross-file dependency context unavailable from the diff alone.
 
 Pass to the agent:
-- `$LOGIC_FILES` and `$SECURITY_FILES` space-separated lists from Phase 1.5 (excludes DOCS/CONFIG/TEST)
-- Cache key: `pr-<number>-<first8charsOfHeadSha>` for PR mode; `local-<sha8>` for local diff mode (use `git rev-parse --short=8 HEAD`)
+- `$LOGIC_FILES` and `$SECURITY_FILES` from Phase 1.5 (excludes DOCS/CONFIG/TEST)
+- Cache key: `pr-<number>-<first8charsOfHeadSha>` (PR mode); `local-<sha8>` for local diff mode (`git rev-parse --short=8 HEAD`)
 
-The agent checks `.claude/code-graph/<cache_key>-impact-map.md` first — returns cached map if the SHA matches. Otherwise computes L2 import dependencies and L3 co-change risk, then writes to `.claude/code-graph/`.
+The agent checks `.claude/code-graph/<cache_key>-impact-map.md` first — returns the cached map if the SHA matches; otherwise computes L2 import dependencies + L3 co-change risk and writes to `.claude/code-graph/`.
 
-**Store the returned markdown as `IMPACT_MAP`.** Pass it as context to Phase 3 review, annotating findings that involve files mentioned in the "High-risk dependents" or "Missing co-changes" sections with elevated priority.
+**Store the returned markdown as `IMPACT_MAP`.** Prepend it to each parallel agent's prompt in Phase 3:
+```text
+[IMPACT MAP — use as additional context for cross-file risk; do not repeat verbatim in findings]
+<IMPACT_MAP content>
+[END IMPACT MAP]
+```
 
-If `code-graph-analyzer` returns an error or times out, proceed to Phase 3 without impact map context — do not block the review.
+If `code-graph-analyzer` errors or times out, proceed without the impact map — do not block the review.
 
-### Phase 3 — REVIEW
+### Phase 3 — REVIEW (parallel agents)
 
-**Cross-reference static analysis signals first** — Check the linter/typecheck output captured in Phase 2 Step 6. For any `file:line` already flagged:
-- Treat as elevated-confidence finding (linter + code review = double signal)
-- Include the linter rule in the finding description
-- Skip re-flagging if the linter message is already precise and actionable
+**Cross-reference static analysis first** — For any `file:line` already flagged by the Phase 2 linter/typecheck: treat as elevated-confidence (linter + review = double signal), include the linter rule in the finding, and skip re-flagging if the linter message is already precise.
 
-Read each changed file **in full** (not just the diff hunks — you need surrounding context).
-
-For PR reviews, fetch the full file contents at the PR head revision:
+Each agent reads changed files **in full** at the PR head revision:
 ```bash
 gh pr diff <NUMBER> --name-only | while IFS= read -r file; do
   gh api "repos/{owner}/{repo}/contents/$file?ref=<head-branch>" --jq '.content' | base64 -d
 done
 ```
 
-Apply the review checklist across 7 categories:
+**Agent pool** — `code-reviewer` is always the anchor. The full pool is:
 
-| Category | What to Check |
+**General agents (8):**
+- `code-reviewer` — overall quality, security, maintainability (anchor)
+- `security-reviewer` — OWASP Top 10; injection, SSRF, hardcoded secrets, unsafe crypto
+- `comment-analyzer` — inline comment accuracy, completeness, rot risk
+- `pr-test-analyzer` — test coverage, behavioral coverage, real-bug prevention
+- `silent-failure-hunter` — swallowed errors, ignored promises, missing propagation
+- `type-design-analyzer` — type encapsulation, invariant expression, enforcement
+- `code-simplifier` — over-complex implementations, duplicate abstractions
+- `pr-walkthrough-writer` — structured walkthrough + Mermaid diagram (skip when `--focus` is set); **store output as `WALKTHROUGH_OUTPUT`**
+
+**Specialist agents (auto-dispatched):** every agent in `$SPECIALIST_AGENTS` (from Phase 1.5) runs alongside the general pool, scoped to its language/framework files.
+
+**`--focus` filtering** — `code-reviewer` always runs. The auto-dispatched `$SPECIALIST_AGENTS` always run (language coverage is independent of focus). When `--focus` is specified, validate it first:
+
+```
+Valid --focus values: comments | tests | errors | types | code | simplify
+Unknown value → stop: "Unknown --focus value '<value>'. Valid options: comments, tests, errors, types, code, simplify"
+```
+
+A valid `--focus` runs only the mapped general subset (plus the always-on specialists):
+
+| `--focus` | General agents to run |
 |---|---|
-| **Correctness** | Logic errors, off-by-ones, null handling, edge cases, race conditions |
-| **Type Safety** | Type mismatches, unsafe casts, `any` usage, missing generics |
-| **Pattern Compliance** | Matches project conventions (naming, file structure, error handling, imports) |
-| **Security** | Injection, auth gaps, secret exposure, SSRF, path traversal, XSS |
-| **Performance** | N+1 queries, missing indexes, unbounded loops, memory leaks, large payloads |
-| **Completeness** | Missing tests, missing error handling, incomplete migrations, missing docs |
-| **Maintainability** | Dead code, magic numbers, deep nesting, unclear naming, missing types |
+| _(none)_ | All 8 general agents |
+| `comments` | `code-reviewer` + `comment-analyzer` |
+| `tests` | `code-reviewer` + `pr-test-analyzer` |
+| `errors` | `code-reviewer` + `silent-failure-hunter` |
+| `types` | `code-reviewer` + `type-design-analyzer` |
+| `code` | `code-reviewer` + `security-reviewer` |
+| `simplify` | `code-reviewer` + `code-simplifier` |
 
-Assign severity to each finding:
+Apply the 7-category **Review Checklist** (below) across all agents.
 
-| Severity | Meaning | Action |
-|---|---|---|
-| **CRITICAL** | Security vulnerability or data loss risk | Must fix before merge |
-| **HIGH** | Bug or logic error likely to cause issues | Should fix before merge |
-| **MEDIUM** | Code quality issue or missing best practice | Fix recommended |
-| **LOW** | Style nit or minor suggestion | Optional |
+### Phase 3.5 — VERIFICATION PASS
 
-### Phase 4 — VALIDATE
+Launch `verification-reviewer` with all HIGH and CRITICAL findings from Phase 3. Wait for its output. Carry forward:
+- All **CONFIRMED** findings at their original or verified severity.
+- **UNCERTAIN** findings demoted to MEDIUM (survive as MEDIUM — do not discard).
+- All **CRITICAL** findings regardless of verdict — may be demoted to HIGH, never removed.
 
-Run available validation commands:
+Discard only findings marked INVALID or FALSE POSITIVE (unless originally CRITICAL → demote to HIGH instead). If the PR diff already fixes the issue, remove it with a "FIXED IN THIS PR" verdict (not subject to CRITICAL protection).
 
-Detect the project type from config files (`package.json`, `Cargo.toml`, `go.mod`, `pyproject.toml`, etc.), then run the appropriate commands:
+### Phase 4 — AGGREGATE & VALIDATE
 
-**Node.js / TypeScript** (has `package.json`):
-```bash
-npm test        # Tests
-npm run build   # Build
-```
+**4a — Deduplicate**: Group findings by file + approximate line. Keep one instance per issue.
 
-**Rust** (has `Cargo.toml`):
-```bash
-cargo test   # Tests
-cargo build  # Build
-```
+**4b — Contradiction filter**: If two agents flag the same code for opposite reasons (or one flags while another approves), require ≥ 2 agents in agreement. **Exception**: findings originally rated CRITICAL by any agent are always included regardless of agreement count — even if verification demoted them to HIGH.
 
-**Go** (has `go.mod`):
-```bash
-go test ./...   # Tests
-go build ./...  # Build
-```
+**4c — Confidence filter**: Drop findings framed as "might", "possibly", "consider" unless CRITICAL. Only report ≥ 80% confidence.
 
-**Python** (has `pyproject.toml` / `setup.py`):
-```bash
-pytest  # Tests
-```
+**4d — False-positive guard**: magic numbers in test fixtures or well-named constants → skip; fire-and-forget in tests/logging → skip; style suggestions not agreed by ≥ 2 agents → downgrade to LOW or omit.
 
-> lint + typecheck already ran in Phase 2 Step 6 — record those results here; only re-run test + build.
+**4e — Rank**: CRITICAL → HIGH → MEDIUM → LOW.
 
-Run only the commands that apply to the detected project type. Record pass/fail for each.
+**4f — Validate** (run only commands matching the detected project type; record pass/fail):
 
-### Phase 5 — DECIDE
-
-Form recommendation based on findings:
-
-| Condition | Decision |
+| Project (config file) | Commands |
 |---|---|
-| Zero CRITICAL/HIGH issues, validation passes | **APPROVE** |
-| Only MEDIUM/LOW issues, validation passes | **APPROVE** with comments |
-| Any HIGH issues or validation failures | **REQUEST CHANGES** |
-| Any CRITICAL issues | **BLOCK** — must fix before merge |
+| Node.js / TS (`package.json`) | `npm test`, `npm run build` |
+| Rust (`Cargo.toml`) | `cargo test`, `cargo build` |
+| Go (`go.mod`) | `go test ./...`, `go build ./...` |
+| Python (`pyproject.toml`/`setup.py`) | `pytest` |
 
-Special cases:
-- Draft PR (GitHub only) → Always use **COMMENT** (not approve/block). Note: Bitbucket Cloud has no draft state — states are OPEN/MERGED/DECLINED/SUPERSEDED only.
-- Only docs/config changes → Lighter review, focus on correctness
-- Explicit `--approve` or `--request-changes` flag → Override decision (but still report all findings)
+> lint + typecheck already ran in Phase 2 Step 6 — record those; only re-run test + build.
 
-**Count findings by severity** and store for Phase 6.5:
+**4g — Count by severity** (store for Phase 6.5 and Phase 7):
 ```bash
-CRITICAL_COUNT=<number of CRITICAL findings>
-HIGH_COUNT=<number of HIGH findings>
-MEDIUM_COUNT=<number of MEDIUM findings>
-LOW_COUNT=<number of LOW and NITPICK findings>
+CRITICAL_COUNT=<n>; HIGH_COUNT=<n>; MEDIUM_COUNT=<n>
+LOW_COUNT=<n of LOW and NITPICK>
 LOW_NITPICK_LIST=<formatted markdown list of all LOW and NITPICK findings>
 ```
 
-### Phase 6 — REPORT
+### Phase 5 — DECIDE
 
-Create review artifact at `.claude/reviews/pr-<NUMBER>-review.md`:
+| Condition | Decision |
+|---|---|
+| Zero CRITICAL/HIGH, validation passes | **APPROVE** |
+| Only MEDIUM/LOW, validation passes | **APPROVE** with comments |
+| Any HIGH or validation failure | **REQUEST CHANGES** |
+| Any CRITICAL | **BLOCK** — must fix before merge |
+
+Special cases:
+- Draft PR (GitHub) → always **COMMENT**. (Bitbucket Cloud has no draft state — OPEN/MERGED/DECLINED/SUPERSEDED only.)
+- Only docs/config → lighter review, focus on correctness.
+- Explicit `--approve` / `--request-changes` flag → override decision (still report all findings).
+
+### Phase 6 — REPORT ARTIFACT
+
+Create `.claude/reviews/pr-<NUMBER>-review.md`:
 
 ```markdown
 # PR Review: #<NUMBER> — <TITLE>
@@ -350,12 +394,13 @@ Create review artifact at `.claude/reviews/pr-<NUMBER>-review.md`:
 **Author**: <author>
 **Branch**: <head> → <base>
 **Decision**: APPROVE | REQUEST CHANGES | BLOCK
+**Specialists dispatched**: <list of $SPECIALIST_AGENTS>
 
 ## Walkthrough
 
 | File | Change | Summary |
 |------|--------|---------|
-| `<file>` | Added / Modified / Deleted | <one-sentence description of what changed and why> |
+| `<file>` | Added / Modified / Deleted | <one-sentence description> |
 
 ## Summary
 <1-2 sentence overall assessment>
@@ -364,13 +409,10 @@ Create review artifact at `.claude/reviews/pr-<NUMBER>-review.md`:
 
 ### CRITICAL
 <findings or "None">
-
 ### HIGH
 <findings or "None">
-
 ### MEDIUM
 <findings or "None">
-
 ### LOW
 <findings or "None">
 
@@ -384,12 +426,12 @@ Create review artifact at `.claude/reviews/pr-<NUMBER>-review.md`:
 | Build | Pass / Fail / Skipped |
 
 ## Files Reviewed
-<list of files with change type: Added/Modified/Deleted>
+<list with change type>
 ```
 
 ### Phase 6.5 — UPDATE PR DESCRIPTION
 
-Auto-append a structured review summary to the PR description. Idempotent — strips any previously generated block before appending:
+Auto-append a structured review summary. Idempotent — strips any previously generated block first:
 
 ```bash
 CURRENT_BODY=$(gh pr view <NUMBER> --json body --jq '.body')
@@ -416,19 +458,35 @@ SUMMARY_BLOCK="<!-- cr-summary:start -->
 **Reviewed**: $(date +%Y-%m-%d) · **Findings**: ${CRITICAL_COUNT} critical · ${HIGH_COUNT} high · ${MEDIUM_COUNT} medium
 <!-- cr-summary:end -->"
 
-printf '%s\n\n%s' "$STRIPPED" "$SUMMARY_BLOCK" \
-  | gh pr edit <NUMBER> --body-file -
+printf '%s\n\n%s' "$STRIPPED" "$SUMMARY_BLOCK" | gh pr edit <NUMBER> --body-file -
 ```
 
-> Skip this phase for Bitbucket (REST API does not support PR description updates via the same CLI workflow).
+> Skip for Bitbucket (REST API does not support this CLI workflow).
 
 ### Phase 7 — PUBLISH
 
-Post the review to GitHub using severity-based delivery (three steps):
+**Step 7a — Walkthrough comment first** — the first thing developers see, posted before any findings.
 
-**Step 7a — Inline comments for CRITICAL/HIGH** (post individually, max 10; excess joins the summary table in Step 7b):
+Use `WALKTHROUGH_OUTPUT` from `pr-walkthrough-writer` if it ran; otherwise generate inline. Include a 1–5 **Review Effort** score:
+- **1** Docs/config/formatting only · **2** Small fix, 1–3 files · **3** Medium feature/refactor, 4–10 files · **4** Complex refactor or >10 files · **5** Architecture/schema/auth/cross-cutting
 
-For each CRITICAL/HIGH finding with a specific `file:line`, build the comment:
+Add a Mermaid sequence diagram only when ≤10 files changed AND at least one non-test logic file is present and a clear multi-layer flow exists; otherwise omit.
+
+```bash
+WALKTHROUGH_BODY="## 🔍 PR Walkthrough
+
+**Review Effort**: <N>/5 — <label> (<brief reason>)
+
+| File | Change | Summary |
+|------|--------|---------|
+| \`<file>\` | Added/Modified/Deleted | <one-sentence summary> |
+
+<mermaid_block_if_generated>"
+gh pr review <NUMBER> --comment --body "$WALKTHROUGH_BODY"
+```
+
+**Step 7b — Inline comments for CRITICAL/HIGH** (post individually, max 10; excess joins the table in 7c):
+
 ```text
 **[{SEVERITY}] {issue_title}**
 
@@ -436,7 +494,7 @@ For each CRITICAL/HIGH finding with a specific `file:line`, build the comment:
 
 **Why existing guards don't catch it:** {guard_gap}
 ```
-If the fix is a single-line replacement, append a committable suggestion block so the author can apply it with one click:
+If the fix is a single line, append a committable suggestion block:
 ````markdown
 ```suggestion
 {fixed_line_content}
@@ -446,18 +504,14 @@ If the fix is a single-line replacement, append a committable suggestion block s
 ```bash
 HEAD_SHA=$(gh pr view <NUMBER> --json headRefOid --jq .headRefOid)
 gh api "repos/{owner}/{repo}/pulls/<NUMBER>/comments" \
-  -f body="$COMMENT_BODY" \
-  -f path="<file>" \
-  -F line=<line_number> \
-  -f side="RIGHT" \
-  -f commit_id="$HEAD_SHA"
+  -f body="$COMMENT_BODY" -f path="<file>" -F line=<line_number> \
+  -f side="RIGHT" -f commit_id="$HEAD_SHA"
 ```
 
-**Step 7b — Main review body** (MEDIUM findings as table + overall decision):
+**Step 7c — Main review body** (MEDIUM table + decision):
 
-> **Profile gate**: if `--profile=chill` was specified, skip the MEDIUM section entirely — include only the severity summary counts and the overall decision. Proceed directly to the `gh pr review` command without listing MEDIUM findings.
+> **Profile gate**: `--profile=chill` → skip the MEDIUM section; include only the severity counts + decision.
 
-Build `$REVIEW_BODY`:
 ```markdown
 ## 📊 Review Summary
 
@@ -474,14 +528,13 @@ Build `$REVIEW_BODY`:
 |---|---|---|
 | `file:line` | description | fix |
 ```
-Include MEDIUM findings (assertive profile only). Also include HIGH findings beyond the 10-inline limit.
+Include MEDIUM findings (assertive only) + HIGH findings beyond the 10-inline limit.
 
 ```bash
-# APPROVE — zero CRITICAL/HIGH issues, validation passes
+# APPROVE — zero CRITICAL/HIGH, validation passes
 gh pr review <NUMBER> --approve --body "$REVIEW_BODY"
 
-# BLOCK — any CRITICAL findings
-# GitHub has no native BLOCK review state — use REQUEST CHANGES with a prominent ⛔ BLOCK header
+# BLOCK — any CRITICAL (GitHub has no native BLOCK — use REQUEST CHANGES with a ⛔ header)
 if [ "$CRITICAL_COUNT" -gt 0 ]; then
   REVIEW_BODY="⛔ BLOCK — This PR must not be merged until all CRITICAL issues are resolved.
 
@@ -489,16 +542,14 @@ $REVIEW_BODY"
 fi
 gh pr review <NUMBER> --request-changes --body "$REVIEW_BODY"
 
-# REQUEST CHANGES — any HIGH issues or validation failures (no CRITICAL)
+# REQUEST CHANGES — any HIGH or validation failure (no CRITICAL)
 gh pr review <NUMBER> --request-changes --body "$REVIEW_BODY"
 
 # COMMENT — draft PR or informational
 gh pr review <NUMBER> --comment --body "$REVIEW_BODY"
 ```
 
-**Step 7c — Collapsible LOW/NITPICK** (if any; posted as a separate final comment):
-
-> **Profile gate**: skip Step 7c entirely when `--profile=chill` — LOW and NITPICK findings are suppressed.
+**Step 7d — Collapsible LOW/NITPICK** (skip entirely when `--profile=chill`):
 
 ```bash
 gh pr review <NUMBER> --comment --body "<details>
@@ -511,30 +562,26 @@ ${LOW_NITPICK_LIST}
 
 ### Phase 8 — OUTPUT
 
-Report to user:
-
 ```
 PR #<NUMBER>: <TITLE>
 Decision: <APPROVE|REQUEST_CHANGES|BLOCK>
+Specialists: <list of $SPECIALIST_AGENTS or "none">
 
-Issues: <critical_count> critical, <high_count> high, <medium_count> medium, <low_count> low
-Validation: <pass_count>/<total_count> checks passed
+Issues: <c> critical, <h> high, <m> medium, <l> low
+Validation: <pass>/<total> checks passed
 
 Artifacts:
   Review: .claude/reviews/pr-<NUMBER>-review.md
   GitHub: <PR URL>
 ```
 
-Save current HEAD commit for incremental review tracking (next review will only process new commits):
-
-**Only write this file if Phase 7 completed successfully** (the `gh pr review` command in Step 7b returned exit code 0). If Phase 7 failed for any reason (network error, expired token, API error), skip writing this file so the next run retries from scratch rather than silently skipping the PR.
+Save the reviewed HEAD commit — **only if Phase 7c succeeded** (the `gh pr review` call returned 0). If Phase 7 failed (network/token/API error), skip writing so the next run retries from scratch:
 
 ```bash
-# Capture the exit code of the Phase 7b gh pr review call (set REVIEW_EXIT=$? immediately after it)
+# Set REVIEW_EXIT=$? immediately after the Phase 7c gh pr review call
 if [ "${REVIEW_EXIT:-1}" -eq 0 ]; then
   mkdir -p .claude/reviews
-  gh pr view <NUMBER> --json headRefOid --jq '.headRefOid' \
-    > ".claude/reviews/pr-<NUMBER>-last-commit.txt"
+  gh pr view <NUMBER> --json headRefOid --jq '.headRefOid' > ".claude/reviews/pr-<NUMBER>-last-commit.txt"
 fi
 ```
 
@@ -542,168 +589,110 @@ fi
 
 ## Bitbucket PR Review Mode
 
-Comprehensive Bitbucket Cloud PR review via REST API v2.0.
+Comprehensive Bitbucket Cloud PR review via REST API v2.0. Same phase structure as GitHub mode (classify & dispatch, context, code graph, parallel agents, verification, aggregate, decide, publish) — only the API calls differ.
 
 **Prerequisites**:
-- `BB_USERNAME` — Bitbucket 帳號名稱
-- `BB_APP_PASSWORD` — Bitbucket App Password（**非普通密碼**）
+- `BB_USERNAME` — Bitbucket account name
+- `BB_APP_PASSWORD` — Bitbucket **App Password** (not your account password)
 
-App Password 需要以下權限：
-- Repositories: Read
-- Pull requests: Read + Write（comment / approve / request-changes 必須）
-
-建立路徑：Bitbucket → Settings → Personal settings → App passwords
+App Password permissions: Repositories **Read** + Pull requests **Read + Write** (comment/approve/request-changes). Create at: Bitbucket → Settings → Personal settings → App passwords.
 
 ### Phase 1 — FETCH
 
-Extract workspace, repo slug, and PR ID from input:
-
 | Input | Action |
 |---|---|
-| Number (e.g. `42`) | Parse workspace/slug from `git remote get-url origin` |
+| Number (`42`) | Parse workspace/slug from `git remote get-url origin` |
 | URL (`bitbucket.org/{ws}/{slug}/pull-requests/42`) | Extract ws, slug, ID directly |
 
-Parse remote URL（同時支援 HTTPS 和 SSH 格式）：
 ```bash
 REMOTE=$(git remote get-url origin)
-
-# HTTPS: https://bitbucket.org/workspace/repo.git
-# SSH:   git@bitbucket.org:workspace/repo.git
-
-# 統一提取 workspace/repo_slug
-PATH_PART=$(echo "$REMOTE" \
-  | sed 's|https://bitbucket.org/||' \
-  | sed 's|git@bitbucket.org:||' \
-  | sed 's|\.git$||')
-
+# HTTPS: https://bitbucket.org/workspace/repo.git  |  SSH: git@bitbucket.org:workspace/repo.git
+PATH_PART=$(echo "$REMOTE" | sed 's|https://bitbucket.org/||' | sed 's|git@bitbucket.org:||' | sed 's|\.git$||')
 WORKSPACE=$(echo "$PATH_PART" | cut -d/ -f1)
 REPO_SLUG=$(echo "$PATH_PART" | cut -d/ -f2)
-```
 
-Fetch PR metadata:
-```bash
 curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID" \
-  | jq '{
-      title,
-      description,
-      author: .author.display_name,
-      source_branch: .source.branch.name,
-      dest_branch: .destination.branch.name,
-      head_commit: .source.commit.hash
-    }'
-```
+  | jq '{title, description, author: .author.display_name,
+         source_branch: .source.branch.name, dest_branch: .destination.branch.name,
+         head_commit: .source.commit.hash}'
 
-Fetch diff:
-```bash
 curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/diff"
 ```
 
-If credentials fail (HTTP 401):
-- 確認使用的是 App Password（非 Bitbucket 帳號密碼）
-- 確認 App Password 有 Repositories: Read 和 Pull requests: Read+Write 權限
-- 測試：`curl -u "$BB_USERNAME:$BB_APP_PASSWORD" "https://api.bitbucket.org/2.0/user"`
+On HTTP 401: confirm you're using an App Password with the right scopes. Test: `curl -u "$BB_USERNAME:$BB_APP_PASSWORD" "https://api.bitbucket.org/2.0/user"`.
 
-### Phase 2 — CONTEXT
+### Phase 1.5 — CLASSIFY & DISPATCH
 
-Same as GitHub PR Review Mode Phase 2 — read `CLAUDE.md`, planning artifacts, PR description.
-
-### Phase 3 — REVIEW
-
-Get changed files（分頁：若 response 含 `next` 欄位，繼續 fetch 直到 `next` 為 null）：
+Get changed files (paginate while `next` is non-null), then run the same file classification and **Language / Framework Auto-Dispatch** as GitHub mode to compute `$LOGIC_FILES`, `$SECURITY_FILES`, and `$SPECIALIST_AGENTS`:
 ```bash
 curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/pullrequests/{id}/diffstat" \
   | jq '.values[] | {path: (.new.path // .old.path), status}'
-# status 值：added | modified | removed | renamed
-# .new 在 removed 時為 null，需 fallback 到 .old.path
+# status: added | modified | removed | renamed; .new is null on removed → fallback to .old.path
 ```
 
-Read each changed file in full at the PR head commit:
+### Phases 2 – 5 — CONTEXT, CODE GRAPH, REVIEW, VERIFICATION, AGGREGATE, DECIDE
+
+Identical to GitHub mode. Read each changed file in full at the PR head commit:
 ```bash
 curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/src/{head_commit}/{filepath}"
 ```
+Run the full parallel agent pool (general + `$SPECIALIST_AGENTS`), `verification-reviewer` (Phase 3.5), and the same aggregate/validate/decide logic.
 
-Apply the same 7-category review checklist as GitHub PR Review Mode Phase 3.
+### Phase 6 — REPORT ARTIFACT
 
-### Phase 4 — VALIDATE
-
-Same as GitHub PR Review Mode Phase 4 — detect project type and run local validation commands.
-
-### Phase 5 — DECIDE
-
-Same decision logic as GitHub PR Review Mode Phase 5.
-
-### Phase 6 — REPORT
-
-Create review artifact at `.claude/reviews/pr-<ID>-review.md` using the same format as GitHub PR Review Mode Phase 6.
+Create `.claude/reviews/pr-<ID>-review.md` using the same format as GitHub mode. (Skip Phase 6.5 — Bitbucket REST does not support the PR-description update workflow.)
 
 ### Phase 7 — PUBLISH
 
-Post review result to Bitbucket using severity-based delivery:
-
-**Step 7a — Inline comments for CRITICAL/HIGH** (max 10; excess joins Step 7b):
-
+**Step 7a — Walkthrough comment first:**
 ```bash
-# For each CRITICAL/HIGH finding — build comment body first
-COMMENT_BODY="**[{SEVERITY}] {issue_title}**\n\n{failure_scenario}\n\n**Why existing guards don't catch it:** {guard_gap}"
-
-# Added/modified line → use "to"
-curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
-  -H "Content-Type: application/json" \
-  -d "{\"content\":{\"raw\":\"$COMMENT_BODY\"},\"inline\":{\"path\":\"$FILEPATH\",\"to\":$LINE_NUMBER}}" \
-  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
-
-# Removed line → use "from"
-curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
-  -H "Content-Type: application/json" \
-  -d "{\"content\":{\"raw\":\"$COMMENT_BODY\"},\"inline\":{\"path\":\"$FILEPATH\",\"from\":$LINE_NUMBER}}" \
+curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" -H "Content-Type: application/json" \
+  -d "{\"content\": {\"raw\": \"## PR Walkthrough\n\n<walkthrough_content>\"}}" \
   "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
 ```
 
-**Step 7b — Main review comment** (MEDIUM table + approve/request-changes decision):
+**Step 7b — Inline comments for CRITICAL/HIGH** (max 10):
+```bash
+# Added/modified line → "to"; removed line → "from"
+curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" -H "Content-Type: application/json" \
+  -d "{\"content\":{\"raw\":\"$COMMENT_BODY\"},\"inline\":{\"path\":\"<file>\",\"to\":<line>}}" \
+  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
+```
 
-Build `$REVIEW_SUMMARY` as a Markdown table of MEDIUM findings plus HIGH overflow, then post:
-
+**Step 7c — Main review comment + decision:**
 ```bash
 # Post summary comment (all cases)
-curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
-  -H "Content-Type: application/json" \
-  -d "{\"content\": {\"raw\": \"$REVIEW_SUMMARY\"}}" \
+curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" -H "Content-Type: application/json" \
+  -d "{\"content\": {\"raw\": \"$REVIEW_BODY\"}}" \
   "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
 
-# If APPROVE（回傳 200 + JSON: {approved: true, user, role, participated_on}）
+# APPROVE (200 + JSON) / REQUEST CHANGES or BLOCK (204 No Content)
 curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/approve"
-
-# If REQUEST CHANGES or BLOCK（回傳 204 No Content，無 JSON body）
-curl -s -o /dev/null -w "%{http_code}" -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
-  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/request-changes"
+# or .../request-changes
 ```
 
-**Step 7c — Low priority findings** (if any; Bitbucket has no HTML folding — use plain format):
-
+**Step 7d — Low priority** (Bitbucket has no HTML folding — plain format):
 ```bash
-LOW_BODY="**Low Priority / Style Suggestions (${LOW_COUNT}):**\n\n${LOW_NITPICK_LIST}"
-curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
-  -H "Content-Type: application/json" \
-  -d "{\"content\": {\"raw\": \"$LOW_BODY\"}}" \
+curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" -H "Content-Type: application/json" \
+  -d "{\"content\": {\"raw\": \"**Low Priority / Style Suggestions (${LOW_COUNT}):**\n\n${LOW_NITPICK_LIST}\"}}" \
   "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
 ```
 
 ### Phase 8 — OUTPUT
 
-Report to user:
-
 ```
 PR #<ID>: <TITLE>
 Platform: Bitbucket Cloud
 Decision: <APPROVE|REQUEST_CHANGES|BLOCK>
+Specialists: <list of $SPECIALIST_AGENTS or "none">
 
-Issues: <critical_count> critical, <high_count> high, <medium_count> medium, <low_count> low
-Validation: <pass_count>/<total_count> checks passed
+Issues: <c> critical, <h> high, <m> medium, <l> low
+Validation: <pass>/<total> checks passed
 
 Artifacts:
   Review: .claude/reviews/pr-<ID>-review.md
@@ -712,9 +701,42 @@ Artifacts:
 
 ---
 
+## Review Checklist
+
+The 7-category checklist applied across all modes and agents:
+
+| Category | What to Check |
+|---|---|
+| **Correctness** | Logic errors, off-by-ones, null handling, edge cases, race conditions |
+| **Type Safety** | Type mismatches, unsafe casts, `any` usage, missing generics |
+| **Pattern Compliance** | Matches project conventions (naming, structure, error handling, imports) |
+| **Security** | Injection, auth gaps, secret exposure, SSRF, path traversal, XSS |
+| **Performance** | N+1 queries, missing indexes, unbounded loops, memory leaks, large payloads |
+| **Completeness** | Missing tests, missing error handling, incomplete migrations, missing docs |
+| **Maintainability** | Dead code, magic numbers, deep nesting, unclear naming, missing types |
+
+## Severity Levels
+
+| Severity | Meaning | Action |
+|---|---|---|
+| **CRITICAL** | Security vulnerability or data-loss risk | BLOCK — must fix before merge |
+| **HIGH** | Bug or logic error likely to cause issues | Should fix before merge |
+| **MEDIUM** | Code-quality issue or missing best practice | Fix recommended |
+| **LOW** | Style nit or minor suggestion | Optional |
+| **NITPICK** | Pure style preference, no correctness/maintainability impact | Shown only in `--profile=assertive` (default); skipped in `--profile=chill` |
+
+Every HIGH/CRITICAL finding must include all three: **precise line number** + **concrete failure scenario** + **why existing guards don't catch it**.
+
+## Confidence Rule
+
+Only report issues with confidence ≥ 80%:
+- Critical: bugs, security, data loss
+- Important: missing tests, quality problems, style violations
+- Advisory: suggestions only when explicitly requested
+
 ## Edge Cases
 
-- **No `gh` CLI (GitHub mode)**: Fall back to local-only review, skip publish. Warn user.
-- **Missing BB credentials (Bitbucket mode)**: Stop with instructions to set `BB_USERNAME` and `BB_APP_PASSWORD`.
-- **Diverged branches**: Suggest `git fetch origin && git rebase origin/<base>` before review.
-- **Large PRs (>50 files)**: Warn about review scope. Focus on source changes first, then tests, then config/docs.
+- **No `gh` CLI (GitHub mode)** → fall back to local-only review, skip publish. Warn the user.
+- **Missing BB credentials (Bitbucket mode)** → stop with instructions to set `BB_USERNAME` and `BB_APP_PASSWORD`.
+- **Diverged branches** → suggest `git fetch origin && git rebase origin/<base>` before review.
+- **Large PRs (>50 files)** → warn about scope. Review source first, then tests, then config/docs.
