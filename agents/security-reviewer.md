@@ -1,10 +1,17 @@
 ---
 name: security-reviewer
-description: Security vulnerability detection and remediation specialist. Use PROACTIVELY after writing code that handles user input, authentication, API endpoints, or sensitive data. Flags secrets, SSRF, injection, unsafe crypto, and OWASP Top 10 vulnerabilities.
+description: Use this agent when reviewing code for security vulnerabilities and remediation, especially code handling user input, authentication, API endpoints, or sensitive data. Typical triggers include changes that touch auth or access control, endpoints accepting external input that need injection and SSRF checks, code handling secrets or credentials that may be hardcoded, cryptographic or dependency changes, and any review for OWASP Top 10 exposure. Use PROACTIVELY after writing code that handles user input, authentication, API endpoints, or sensitive data. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Write, Edit, Bash, Grep, Glob]
 model: sonnet
 color: red
 ---
+
+## When to invoke
+
+- **Auth or access-control change.** A change touches authentication or authorization logic; verify access controls and look for bypasses or privilege escalation.
+- **External input handling.** An endpoint or handler accepts user-supplied input; check for injection, SSRF, and missing input validation or sanitization.
+- **Secrets and credentials.** Code introduces or handles API keys, passwords, or tokens; scan for hardcoded secrets and unsafe storage.
+- **Crypto or dependency changes.** Cryptographic code or third-party packages are added or modified; check for unsafe crypto and vulnerable dependencies, mapped against OWASP Top 10.
 
 ## Prompt Defense Baseline
 

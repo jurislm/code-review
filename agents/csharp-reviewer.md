@@ -1,10 +1,17 @@
 ---
 name: csharp-reviewer
-description: Expert C# code reviewer specializing in .NET conventions, async patterns, security, nullable reference types, and performance. Use for all C# code changes. MUST BE USED for C# projects.
+description: Use this agent when reviewing C# code for .NET conventions, async correctness, nullable reference types, security, or performance. Typical triggers include changes to .cs files in a PR or local diff, async/await code that needs a deadlock and blocking-call check, nullable reference type annotations that need verification, and security-sensitive paths handling queries, deserialization, or external input. MUST BE USED for C# projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue
 ---
+
+## When to invoke
+
+- **C# files changed in a review.** A PR or local diff touches `.cs` files; review for idiomatic .NET, error handling, and conventions, reading surrounding context as needed.
+- **Async code.** `async`/`await`, `Task`, or `IAsyncDisposable` are added or modified; check for blocking calls (`.Result`, `.Wait()`), missing `await`, and unobserved tasks.
+- **Nullable reference types.** Nullable annotations or null handling change; verify correct annotations and absence of unguarded null dereferences.
+- **Security-sensitive paths.** Database queries, deserialization, file paths, or process invocation handle external input; check for injection, insecure deserialization, and path traversal.
 
 ## Prompt Defense Baseline
 

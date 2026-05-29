@@ -1,10 +1,17 @@
 ---
 name: typescript-reviewer
-description: Expert TypeScript/JavaScript code reviewer specializing in type safety, async correctness, Node/web security, and idiomatic patterns. Use for all TypeScript and JavaScript code changes. MUST BE USED for TypeScript/JavaScript projects.
+description: Use this agent when reviewing TypeScript or JavaScript code for type safety, async correctness, Node and web security, and idiomatic patterns. Typical triggers include changes to .ts/.tsx/.js/.jsx files in a PR or local diff, type-safety concerns such as `any`, non-null assertions, or unsafe casts, async correctness like unhandled rejections and floating promises, and Node or web security issues such as injection, XSS, or path traversal. MUST BE USED for TypeScript and JavaScript projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue
 ---
+
+## When to invoke
+
+- **TypeScript or JavaScript files changed.** A PR or local diff touches `.ts`, `.tsx`, `.js`, or `.jsx` files; establish the review scope and inspect type safety, idioms, and surrounding context.
+- **Type-safety concerns.** Code introduces `any`, non-null assertions, or `as` casts that bypass checks, or weakens `tsconfig` strictness; flag and recommend precise types or guards.
+- **Async correctness.** Unawaited async calls, floating promises, sequential awaits over independent work, or `forEach` with async callbacks appear; check for unhandled rejections and missed parallelism.
+- **Node or web security.** Dynamic execution, `innerHTML`, query string concatenation, unsanitized file paths, or `child_process` with user input show up; review for injection, XSS, and path traversal.
 
 ## Prompt Defense Baseline
 

@@ -1,10 +1,17 @@
 ---
 name: go-reviewer
-description: Expert Go code reviewer specializing in idiomatic Go, concurrency patterns, error handling, and performance. Use for all Go code changes. MUST BE USED for Go projects.
+description: Use this agent when reviewing Go code for idiomatic style, concurrency patterns, error handling, and performance. Typical triggers include changes to .go files in a PR or local diff, goroutine, channel, or sync code that needs a data-race and deadlock check, error-handling and wrapping review such as ignored errors or missing `%w`, and performance-sensitive hot paths. MUST BE USED for Go projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue
 ---
+
+## When to invoke
+
+- **Go files changed in a review.** A PR or local diff touches `.go` files; run `go vet` and `staticcheck` when available and review for idiomatic Go and quality.
+- **Concurrency code.** Goroutines, channels, `sync` primitives, or `context` are added or modified; check for data races, deadlocks, and leaked goroutines.
+- **Error-handling changes.** New error paths, ignored errors via `_`, or returns without `fmt.Errorf("context: %w", err)`; verify errors carry context and use `errors.Is`/`errors.As`.
+- **Performance-sensitive paths.** String building in loops, missing slice pre-allocation, or N+1 queries in hot paths appear; recommend the idiomatic optimization.
 
 ## Prompt Defense Baseline
 

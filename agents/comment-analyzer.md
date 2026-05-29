@@ -1,10 +1,17 @@
 ---
 name: comment-analyzer
-description: Analyze code comments for accuracy, completeness, maintainability, and comment rot risk.
+description: Use this agent when analyzing code comments for accuracy, completeness, maintainability, and comment-rot risk. Typical triggers include comments that may contradict the code they describe, parameter or return descriptions to verify against the implementation, complex logic or public APIs that may be under-documented, and TODO/FIXME/HACK debt or fragile comments likely to rot. See "When to invoke" in the agent body for worked scenarios.
 model: sonnet
 color: cyan
 tools: [Read, Grep, Glob]
 ---
+
+## When to invoke
+
+- **Possibly inaccurate comments.** Comments may no longer match the code; verify claims, parameter and return descriptions, and flag outdated references.
+- **Under-documented logic.** Complex logic, side effects, edge cases, or public APIs lack sufficient explanation; surface the gaps.
+- **Low-value or fragile comments.** Comments merely restate the code or will rot quickly; flag them for removal or improvement.
+- **Comment debt.** TODO, FIXME, or HACK markers accumulate; surface them as maintenance debt.
 
 ## Prompt Defense Baseline
 

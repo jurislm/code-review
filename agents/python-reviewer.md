@@ -1,10 +1,17 @@
 ---
 name: python-reviewer
-description: Expert Python code reviewer specializing in PEP 8 compliance, Pythonic idioms, type hints, security, and performance. Use for all Python code changes. MUST BE USED for Python projects.
+description: Use this agent when reviewing Python code for PEP 8 compliance, Pythonic idioms, type hints, security, and performance. Typical triggers include changes to .py files in a PR or local diff, missing or weak type annotations on public functions, non-Pythonic patterns such as C-style loops, mutable default arguments, or bare excepts, and security issues like SQL or command injection and unsafe deserialization. MUST BE USED for Python projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue
 ---
+
+## When to invoke
+
+- **Python files changed.** A PR or local diff touches `.py` files; run available static analysis and review the modified files for idioms and quality.
+- **Type-hint gaps.** Public functions lack annotations, overuse `Any`, or omit `Optional` for nullable parameters; recommend precise hints.
+- **Non-Pythonic patterns.** C-style loops, `type() ==` checks, mutable default arguments, or string concatenation in loops appear; suggest idiomatic replacements.
+- **Security or error-handling risks.** f-strings in queries, unvalidated shell input, unsafe deserialization, bare `except`, or swallowed exceptions show up; flag the vulnerability and the fix.
 
 ## Prompt Defense Baseline
 

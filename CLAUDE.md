@@ -83,12 +83,25 @@ GitHub 用戶無需額外設定（使用 `gh` CLI）。
 ```yaml
 ---
 name: <kebab-case>           # 必填
-description: <一句話描述，用於 PROACTIVELY 觸發條件>  # 必填
+description: <triggering 格式，見下>  # 必填
 tools: [Read, Grep, Glob]   # 建議；按需加 Bash, Write, Edit
 model: sonnet               # 建議；預設 sonnet；特殊：healthcare-reviewer 用 opus
-color: green                # 必填；green/blue/yellow/magenta/red/orange/purple/cyan/gray
+color: blue                 # 必填；官方 validator 僅認可：blue/cyan/green/yellow/magenta/red（orange、purple、gray 等非認可色勿用）
 ---
 ```
+
+**`description` 採官方 triggering 格式**（flat prose，單行，提升自動 dispatch 命中率）：
+`Use this agent when <conditions>. Typical triggers include <2-4 個 noun-phrase 場景>. <強觸發語>. See "When to invoke" in the agent body for worked scenarios.`
+
+**保留強觸發語**：描述務必包含 proactive imperative，否則自動 dispatch 命中率下降——語言/框架 agent 用 `MUST BE USED for X projects.`，主動型 agent 用 `Use PROACTIVELY when/after ...`（如 security-reviewer、database-reviewer）。triggering 格式與這些 imperative **並存**，不可只留其一。
+
+並在 frontmatter 後緊接一個 `## When to invoke` 區塊（2-4 條第三人稱 prose bullet，描述情境 + agent 應做什麼，**不要**引用對話逐字稿）。
+
+可用官方 validator 驗證（**需先安裝 `plugin-dev` plugin**；未安裝則略過。路徑隨快取版本而變，必要時 `find ~/.claude/plugins -name validate-agent.sh`）：
+```bash
+bash ~/.claude/plugins/cache/claude-plugins-official/plugin-dev/*/skills/agent-development/scripts/validate-agent.sh agents/<name>.md
+```
+（`<example>` blocks 警告為舊慣例，現行格式改用 `## When to invoke` body 區塊，可忽略該警告。）
 
 Skill frontmatter 只需 `name` + `description`（無 tools / model / color）。
 
@@ -161,7 +174,7 @@ commit checklist：
 ### 通用主審
 - `code-reviewer`（green）— 主審，含 false positive 過濾
 - `security-reviewer`（red）— OWASP Top 10，遇 CRITICAL 警報
-- `verification-reviewer`（orange）— 第二道驗證，在輸出前過濾 HIGH/CRITICAL false positive
+- `verification-reviewer`（yellow）— 第二道驗證，在輸出前過濾 HIGH/CRITICAL false positive
 
 ### 前置分析
 - `code-graph-analyzer`（cyan）— L2 import dependency + L3 co-change 風險圖；在並行 agents 前執行，結果快取於 `.claude/code-graph/`

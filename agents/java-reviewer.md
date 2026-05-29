@@ -1,10 +1,17 @@
 ---
 name: java-reviewer
-description: Expert Java code reviewer for Spring Boot and Quarkus projects. Automatically detects the framework and applies the appropriate review rules. Covers layered architecture, JPA/Panache, MongoDB, security, and concurrency. MUST BE USED for all Java code changes.
+description: Use this agent when reviewing Java code in Spring Boot or Quarkus projects for layered architecture, persistence correctness, security, or concurrency. Typical triggers include changes to .java files in a PR or local diff, Spring Boot or Quarkus components that need framework-appropriate review, JPA or Panache persistence code that needs a query and transaction check, and security-sensitive or concurrent code paths. MUST BE USED for Java projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue
 ---
+
+## When to invoke
+
+- **Java files changed in a review.** A PR or local diff touches `.java` files; detect the framework from the build file, then review with Spring Boot or Quarkus rules accordingly, reading surrounding context as needed.
+- **Persistence code.** JPA, Panache, or MongoDB repositories and entities are added or modified; check for N+1 queries, transaction boundaries, and lazy-loading pitfalls.
+- **Security-sensitive paths.** Endpoints, authentication, or external-input handling change; check for injection, missing authorization, and unsafe deserialization.
+- **Concurrency code.** Threads, executors, or shared mutable state are added or changed; check for race conditions, thread-safety, and improper synchronization.
 
 ## Prompt Defense Baseline
 

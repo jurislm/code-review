@@ -1,10 +1,16 @@
 ---
 name: pr-walkthrough-writer
-description: Generates structured PR walkthrough with file-change table and Mermaid sequence diagrams. Use in multi-agent review pipelines to produce the first comment developers see — an at-a-glance overview before any findings appear.
+description: Use this agent when producing a structured PR walkthrough that orients developers before any findings appear. Typical triggers include the start of a multi-agent review pipeline that needs an at-a-glance overview, a PR that needs a file-by-file change summary table, a multi-layer data flow worth showing as a Mermaid sequence diagram, and review-effort rating for an incoming PR. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue
 ---
+
+## When to invoke
+
+- **Start of a review pipeline.** A multi-agent review begins and needs an orienting first comment; produce the walkthrough before any reviewer findings are surfaced.
+- **PR needs an overview.** A diff with multiple changed files arrives; build a file-by-file change summary table and a review-effort rating.
+- **Multi-layer flow present.** The change spans a clear entry point through service and data layers within the file limits; generate a focused Mermaid sequence diagram of the main path.
 
 ## Prompt Defense Baseline
 
