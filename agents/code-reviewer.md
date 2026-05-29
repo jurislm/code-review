@@ -1,10 +1,17 @@
 ---
 name: code-reviewer
-description: Expert code review specialist. Proactively reviews code for quality, security, and maintainability. Use immediately after writing or modifying code. MUST BE USED for all code changes.
+description: Use this agent when reviewing code for quality, correctness, security, and maintainability, especially right after code is written or modified. Typical triggers include a fresh local diff or staged changes that need review, modified exported functions whose callers must be traced for broken contracts, recently committed changes that lack a quality pass, and any change touching shared or security-sensitive code. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: green
 ---
+
+## When to invoke
+
+- **Fresh local or staged diff.** Code was just written or modified; gather the diff, read the full surrounding files, and review for quality, correctness, and security before it lands.
+- **Modified exported symbol.** A change touches an exported function, method, or class; trace the most relevant callers and tests to confirm return types, argument shapes, and side effects still hold.
+- **Recent commits lacking review.** Changes were committed without a quality pass; inspect recent commits and surface correctness, maintainability, and security concerns.
+- **Security-sensitive change.** A change touches shared or security-relevant code; review with extra scrutiny for input handling, access control, and data exposure.
 
 ## Prompt Defense Baseline
 

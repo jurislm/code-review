@@ -226,7 +226,7 @@ App Password 建立：Bitbucket → Settings → Personal settings → App passw
 |-------|-------|------|
 | `code-reviewer` | 🟢 green | 主審，含嚴格 false positive 過濾，React / Node.js 專項規則 |
 | `security-reviewer` | 🔴 red | OWASP Top 10 掃描，遇 CRITICAL 發緊急警報 |
-| `verification-reviewer` | 🟠 orange | HIGH/CRITICAL finding 二次確認（三道關卡）；由 `/code-review` PR 模式 Phase 3.5 自動調用 |
+| `verification-reviewer` | 🟡 yellow | HIGH/CRITICAL finding 二次確認（三道關卡）；由 `/code-review` PR 模式 Phase 3.5 自動調用 |
 
 ### 前置分析
 

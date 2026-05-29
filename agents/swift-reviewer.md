@@ -1,10 +1,17 @@
 ---
 name: swift-reviewer
-description: Expert Swift code reviewer specializing in protocol-oriented design, value semantics, ARC memory management, Swift Concurrency, and idiomatic patterns. Use for all Swift code changes. MUST BE USED for Swift projects.
+description: Use this agent when reviewing Swift code for protocol-oriented design, value semantics, ARC memory management, Swift Concurrency safety, or idiomatic patterns. Typical triggers include changes to .swift files in a PR or local diff, reference-type code that needs a retain-cycle and ARC check, async/await and actor code that needs a concurrency-safety review, and unsafe force-unwrap, force-try, or force-cast usage. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue
 ---
+
+## When to invoke
+
+- **Swift files changed in a review.** A PR or local diff touches `.swift` files; review for safety, idiomatic patterns, and performance, reading surrounding context as needed.
+- **Memory management.** Closures, delegates, or reference types are added or modified; check for retain cycles, missing `weak`/`unowned`, and ARC pitfalls.
+- **Swift Concurrency.** `async`/`await`, actors, or `Task` usage are added or changed; check for data races, actor isolation violations, and unsafe shared state.
+- **Unsafe unwrapping.** Force unwraps (`!`), force tries (`try!`), or force casts (`as!`) appear in production paths; verify they are justified or replaced with safe binding.
 
 ## Prompt Defense Baseline
 

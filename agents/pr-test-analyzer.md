@@ -1,10 +1,17 @@
 ---
 name: pr-test-analyzer
-description: Review pull request test coverage quality and completeness, with emphasis on behavioral coverage and real bug prevention.
+description: Use this agent when reviewing a pull request's test coverage quality and completeness, with emphasis on behavioral coverage and real bug prevention. Typical triggers include changed functions or modules whose tests must be located and assessed, new code paths or edge and error cases that appear untested, weak tests relying on no-throw checks instead of meaningful assertions, and flaky or poorly isolated test patterns. See "When to invoke" in the agent body for worked scenarios.
 model: sonnet
 color: cyan
 tools: [Read, Grep, Glob, Bash]
 ---
+
+## When to invoke
+
+- **Changed code lacking tests.** A PR modifies functions, classes, or modules; map the changes, locate corresponding tests, and identify untested paths.
+- **Missing behavioral coverage.** New features, edge cases, error paths, or integrations appear uncovered; flag the gaps that could let real bugs through.
+- **Weak assertions.** Tests rely on no-throw or trivial checks rather than meaningful assertions; call out where behavior is not actually verified.
+- **Flaky or poorly isolated tests.** Test patterns risk flakiness or share state; flag isolation problems and unclear test names.
 
 ## Prompt Defense Baseline
 

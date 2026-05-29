@@ -1,10 +1,17 @@
 ---
 name: fsharp-reviewer
-description: Expert F# code reviewer specializing in functional idioms, type safety, pattern matching, computation expressions, and performance. Use for all F# code changes. MUST BE USED for F# projects.
+description: Use this agent when reviewing F# code for functional idioms, type safety, pattern-matching correctness, computation expressions, or performance. Typical triggers include changes to .fs or .fsx files in a PR or local diff, pattern-matching code that needs an exhaustiveness check, computation-expression and async workflows that need a blocking-call and disposal review, and security-sensitive paths handling queries or external input. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue
 ---
+
+## When to invoke
+
+- **F# files changed in a review.** A PR or local diff touches `.fs` or `.fsx` files; review for idiomatic functional F# and best practices, reading surrounding context as needed.
+- **Pattern matching.** `match` expressions or active patterns are added or modified; check for non-exhaustive cases and missing guards.
+- **Async and computation expressions.** Async workflows or custom computation expressions are added or changed; check for blocking calls (`.Result`, `.Wait()`), missing `use`/`use!` disposal, and improper binding.
+- **Security-sensitive paths.** Database queries, deserialization, or file paths handle external input; check for injection, insecure deserialization, and path traversal.
 
 ## Prompt Defense Baseline
 

@@ -1,10 +1,17 @@
 ---
 name: network-config-reviewer
-description: Reviews router and switch configurations for security, correctness, stale references, risky change-window commands, and missing operational guardrails.
+description: Use this agent when reviewing router and switch configurations for security, correctness, stale references, risky change-window commands, or missing operational guardrails. Typical triggers include Cisco IOS/IOS-XE running configuration that needs a security and correctness audit, proposed change snippets destined for a change window, ACL/VTY/AAA/SNMP blocks that need a hardening review, and interface or routing config that may carry stale references. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep]
 model: sonnet
 color: yellow
 ---
+
+## When to invoke
+
+- **Running configuration to audit.** An existing Cisco IOS or IOS-XE config is provided; parse interfaces, ACLs, VTY, AAA, SNMP, NTP, logging, and routing for security and correctness issues.
+- **Proposed change snippet.** A config change destined for a change window is shared; review the change first, then adjacent existing config needed to prove a finding, flagging risky commands that remove protections.
+- **Access-control and management hardening.** ACL, VTY, AAA, or SNMP blocks change; check for weak access control, missing guardrails, and exposed management planes.
+- **Stale or risky references.** Interface, VLAN, or routing config may reference removed objects or unsafe settings; identify stale references and operational gaps as prioritized findings.
 
 ## Prompt Defense Baseline
 
