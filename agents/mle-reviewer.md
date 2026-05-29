@@ -1,6 +1,6 @@
 ---
 name: mle-reviewer
-description: Use this agent when reviewing production machine-learning engineering code for data contracts, feature pipelines, training reproducibility, offline/online evaluation, model serving, monitoring, or rollback. Typical triggers include feature-generation or data-extraction code that needs a leakage and point-in-time check, training code that needs a reproducibility review, model serving and inference paths that need a safety and rollback check, and evaluation or monitoring code. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing production machine-learning engineering code for data contracts, feature pipelines, training reproducibility, offline/online evaluation, model serving, monitoring, or rollback. Typical triggers include feature-generation or data-extraction code that needs a leakage and point-in-time check, training code that needs a reproducibility review, model serving and inference paths that need a safety and rollback check, and evaluation or monitoring code. MUST BE USED for ML/MLOps projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: magenta

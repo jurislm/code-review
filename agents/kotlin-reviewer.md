@@ -1,6 +1,6 @@
 ---
 name: kotlin-reviewer
-description: Use this agent when reviewing Kotlin code for idiomatic patterns, coroutine safety, Compose best practices, or clean-architecture violations in Android or KMP projects. Typical triggers include changes to .kt or .kts files in a PR or local diff, coroutine and Flow code that needs a scope and lifecycle check, Compose UI code that needs a recomposition and performance review, and module changes that risk clean-architecture boundary violations. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing Kotlin code for idiomatic patterns, coroutine safety, Compose best practices, or clean-architecture violations in Android or KMP projects. Typical triggers include changes to .kt or .kts files in a PR or local diff, coroutine and Flow code that needs a scope and lifecycle check, Compose UI code that needs a recomposition and performance review, and module changes that risk clean-architecture boundary violations. MUST BE USED for Kotlin and Android/KMP projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue

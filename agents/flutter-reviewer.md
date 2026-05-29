@@ -1,6 +1,6 @@
 ---
 name: flutter-reviewer
-description: Use this agent when reviewing Flutter and Dart code for widget best practices, state management patterns, Dart idioms, performance pitfalls, accessibility, or clean architecture violations. Typical triggers include changes to `.dart` files in a PR or local diff, widget tree edits that need a rebuild and performance check, state management code in any solution that needs an anti-pattern review, and accessibility or architecture-boundary concerns. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing Flutter and Dart code for widget best practices, state management patterns, Dart idioms, performance pitfalls, accessibility, or clean architecture violations. Typical triggers include changes to `.dart` files in a PR or local diff, widget tree edits that need a rebuild and performance check, state management code in any solution that needs an anti-pattern review, and accessibility or architecture-boundary concerns. MUST BE USED for Flutter projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: yellow

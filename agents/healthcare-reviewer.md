@@ -1,6 +1,6 @@
 ---
 name: healthcare-reviewer
-description: Use this agent when reviewing healthcare application code for clinical safety, CDSS accuracy, PHI/HIPAA compliance, or medical data integrity, especially in EMR/EHR, clinical decision support, and health information systems. Typical triggers include clinical decision support logic that needs a drug-interaction and dose-validation check, PHI handling that needs a HIPAA exposure scan, medical coding or reference-range data that needs a correctness review, and HL7/FHIR integration code. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing healthcare application code for clinical safety, CDSS accuracy, PHI/HIPAA compliance, or medical data integrity, especially in EMR/EHR, clinical decision support, and health information systems. Typical triggers include clinical decision support logic that needs a drug-interaction and dose-validation check, PHI handling that needs a HIPAA exposure scan, medical coding or reference-range data that needs a correctness review, and HL7/FHIR integration code. MUST BE USED for healthcare and EMR/EHR projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob]
 model: opus
 color: magenta

@@ -1,6 +1,6 @@
 ---
 name: fastapi-reviewer
-description: Use this agent when reviewing FastAPI applications for async correctness, dependency injection, Pydantic schemas, security, OpenAPI quality, testing, or production readiness. Typical triggers include changes to FastAPI routers/endpoints or app construction in a PR or local diff, async database and HTTP code that needs a blocking-call and concurrency check, Pydantic request/response models that need a validation review, and dependency-injection wiring for sessions/auth/settings. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing FastAPI applications for async correctness, dependency injection, Pydantic schemas, security, OpenAPI quality, testing, or production readiness. Typical triggers include changes to FastAPI routers/endpoints or app construction in a PR or local diff, async database and HTTP code that needs a blocking-call and concurrency check, Pydantic request/response models that need a validation review, and dependency-injection wiring for sessions/auth/settings. MUST BE USED for FastAPI projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: yellow
