@@ -1,6 +1,6 @@
 ---
 name: code-graph-analyzer
-description: Use this agent when pre-computing a code impact map of L2 import dependencies and L3 co-change risk before parallel review agents run, as a sequential pre-computation step in /code-review Phase 2.5. Typical triggers include a set of changed logic or security files needing an impact map before specialized reviewers launch, import-dependency tracing to surface at-risk files outside the diff, co-change risk analysis to flag missing co-changes, and cache reuse of a prior map in .claude/code-graph/. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when pre-computing a code impact map of L2 import dependencies and L3 co-change risk before parallel review agents run, as a sequential pre-computation step in /code-review Phase 2.5. Typical triggers include a set of changed logic or security files needing an impact map before specialized reviewers launch, import-dependency tracing to surface at-risk files outside the diff, co-change risk analysis to flag missing co-changes, and cache reuse of a prior map in .claude/code-graph/. Use PROACTIVELY as the pre-computation step before parallel reviewers launch. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash, Write]
 model: sonnet
 color: cyan

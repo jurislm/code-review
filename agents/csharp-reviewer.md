@@ -1,6 +1,6 @@
 ---
 name: csharp-reviewer
-description: Use this agent when reviewing C# code for .NET conventions, async correctness, nullable reference types, security, or performance. Typical triggers include changes to .cs files in a PR or local diff, async/await code that needs a deadlock and blocking-call check, nullable reference type annotations that need verification, and security-sensitive paths handling queries, deserialization, or external input. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing C# code for .NET conventions, async correctness, nullable reference types, security, or performance. Typical triggers include changes to .cs files in a PR or local diff, async/await code that needs a deadlock and blocking-call check, nullable reference type annotations that need verification, and security-sensitive paths handling queries, deserialization, or external input. MUST BE USED for C# projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue

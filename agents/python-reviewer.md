@@ -1,6 +1,6 @@
 ---
 name: python-reviewer
-description: Use this agent when reviewing Python code for PEP 8 compliance, Pythonic idioms, type hints, security, and performance. Typical triggers include changes to .py files in a PR or local diff, missing or weak type annotations on public functions, non-Pythonic patterns such as C-style loops, mutable default arguments, or bare excepts, and security issues like SQL or command injection and unsafe deserialization. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing Python code for PEP 8 compliance, Pythonic idioms, type hints, security, and performance. Typical triggers include changes to .py files in a PR or local diff, missing or weak type annotations on public functions, non-Pythonic patterns such as C-style loops, mutable default arguments, or bare excepts, and security issues like SQL or command injection and unsafe deserialization. MUST BE USED for Python projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue

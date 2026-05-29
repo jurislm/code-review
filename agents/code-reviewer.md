@@ -1,6 +1,6 @@
 ---
 name: code-reviewer
-description: Use this agent when reviewing code for quality, correctness, security, and maintainability, especially right after code is written or modified. Typical triggers include a fresh local diff or staged changes that need review, modified exported functions whose callers must be traced for broken contracts, recently committed changes that lack a quality pass, and any change touching shared or security-sensitive code. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing code for quality, correctness, security, and maintainability, especially right after code is written or modified. Typical triggers include a fresh local diff or staged changes that need review, modified exported functions whose callers must be traced for broken contracts, recently committed changes that lack a quality pass, and any change touching shared or security-sensitive code. Use immediately after writing or modifying code; MUST BE USED for all code changes. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: green

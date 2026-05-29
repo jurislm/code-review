@@ -1,6 +1,6 @@
 ---
 name: cpp-reviewer
-description: Use this agent when reviewing C++ code for memory safety, modern C++ idioms, concurrency safety, or performance. Typical triggers include changes to .cpp/.hpp/.cc/.h files in a PR or local diff, raw new/delete and pointer code that needs a use-after-free and leak check, concurrency primitives that need a data-race and deadlock review, and performance-sensitive hot paths. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing C++ code for memory safety, modern C++ idioms, concurrency safety, or performance. Typical triggers include changes to .cpp/.hpp/.cc/.h files in a PR or local diff, raw new/delete and pointer code that needs a use-after-free and leak check, concurrency primitives that need a data-race and deadlock review, and performance-sensitive hot paths. MUST BE USED for C++ projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue

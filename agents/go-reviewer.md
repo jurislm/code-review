@@ -1,6 +1,6 @@
 ---
 name: go-reviewer
-description: Use this agent when reviewing Go code for idiomatic style, concurrency patterns, error handling, and performance. Typical triggers include changes to .go files in a PR or local diff, goroutine, channel, or sync code that needs a data-race and deadlock check, error-handling and wrapping review such as ignored errors or missing `%w`, and performance-sensitive hot paths. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing Go code for idiomatic style, concurrency patterns, error handling, and performance. Typical triggers include changes to .go files in a PR or local diff, goroutine, channel, or sync code that needs a data-race and deadlock check, error-handling and wrapping review such as ignored errors or missing `%w`, and performance-sensitive hot paths. MUST BE USED for Go projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue

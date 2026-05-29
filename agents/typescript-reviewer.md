@@ -1,6 +1,6 @@
 ---
 name: typescript-reviewer
-description: Use this agent when reviewing TypeScript or JavaScript code for type safety, async correctness, Node and web security, and idiomatic patterns. Typical triggers include changes to .ts/.tsx/.js/.jsx files in a PR or local diff, type-safety concerns such as `any`, non-null assertions, or unsafe casts, async correctness like unhandled rejections and floating promises, and Node or web security issues such as injection, XSS, or path traversal. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing TypeScript or JavaScript code for type safety, async correctness, Node and web security, and idiomatic patterns. Typical triggers include changes to .ts/.tsx/.js/.jsx files in a PR or local diff, type-safety concerns such as `any`, non-null assertions, or unsafe casts, async correctness like unhandled rejections and floating promises, and Node or web security issues such as injection, XSS, or path traversal. MUST BE USED for TypeScript and JavaScript projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue

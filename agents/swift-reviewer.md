@@ -1,6 +1,6 @@
 ---
 name: swift-reviewer
-description: Use this agent when reviewing Swift code for protocol-oriented design, value semantics, ARC memory management, Swift Concurrency safety, or idiomatic patterns. Typical triggers include changes to .swift files in a PR or local diff, reference-type code that needs a retain-cycle and ARC check, async/await and actor code that needs a concurrency-safety review, and unsafe force-unwrap, force-try, or force-cast usage. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing Swift code for protocol-oriented design, value semantics, ARC memory management, Swift Concurrency safety, or idiomatic patterns. Typical triggers include changes to .swift files in a PR or local diff, reference-type code that needs a retain-cycle and ARC check, async/await and actor code that needs a concurrency-safety review, and unsafe force-unwrap, force-try, or force-cast usage. MUST BE USED for Swift projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue

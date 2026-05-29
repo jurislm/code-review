@@ -1,6 +1,6 @@
 ---
 name: django-reviewer
-description: Use this agent when reviewing Django code for ORM correctness, DRF patterns, migration safety, security misconfigurations, or production-grade Django practices. Typical triggers include changes to Django models/views/serializers or `.py` files in a PR or local diff, raw SQL and ORM query usage that needs an injection and N+1 check, schema migrations that need a reversibility and downtime check, and DRF authentication/permission configuration. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing Django code for ORM correctness, DRF patterns, migration safety, security misconfigurations, or production-grade Django practices. Typical triggers include changes to Django models/views/serializers or `.py` files in a PR or local diff, raw SQL and ORM query usage that needs an injection and N+1 check, schema migrations that need a reversibility and downtime check, and DRF authentication/permission configuration. MUST BE USED for Django projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: yellow

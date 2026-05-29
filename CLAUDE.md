@@ -91,9 +91,13 @@ color: blue                 # 必填；官方 validator 僅認可：blue/cyan/gr
 ```
 
 **`description` 採官方 triggering 格式**（flat prose，單行，提升自動 dispatch 命中率）：
-`Use this agent when <conditions>. Typical triggers include <2-4 個 noun-phrase 場景>. See "When to invoke" in the agent body for worked scenarios.`
+`Use this agent when <conditions>. Typical triggers include <2-4 個 noun-phrase 場景>. <強觸發語>. See "When to invoke" in the agent body for worked scenarios.`
 
-並在 frontmatter 後緊接一個 `## When to invoke` 區塊（2-4 條第三人稱 prose bullet，描述情境 + agent 應做什麼，**不要**引用對話逐字稿）。可用官方 validator 驗證：
+**保留強觸發語**：描述務必包含 proactive imperative，否則自動 dispatch 命中率下降——語言/框架 agent 用 `MUST BE USED for X projects.`，主動型 agent 用 `Use PROACTIVELY when/after ...`（如 security-reviewer、database-reviewer）。triggering 格式與這些 imperative **並存**，不可只留其一。
+
+並在 frontmatter 後緊接一個 `## When to invoke` 區塊（2-4 條第三人稱 prose bullet，描述情境 + agent 應做什麼，**不要**引用對話逐字稿）。
+
+可用官方 validator 驗證（**需先安裝 `plugin-dev` plugin**；未安裝則略過。路徑隨快取版本而變，必要時 `find ~/.claude/plugins -name validate-agent.sh`）：
 ```bash
 bash ~/.claude/plugins/cache/claude-plugins-official/plugin-dev/*/skills/agent-development/scripts/validate-agent.sh agents/<name>.md
 ```

@@ -1,6 +1,6 @@
 ---
 name: verification-reviewer
-description: Use this agent when validating HIGH and CRITICAL findings from parallel review agents before they reach the developer, acting as the final gate in a multi-agent PR review pipeline. Typical triggers include a batch of HIGH/CRITICAL findings that need independent confirmation against the actual codebase, suspected false positives to demote or drop, and findings already fixed by the current diff. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when validating HIGH and CRITICAL findings from parallel review agents before they reach the developer, acting as the final gate in a multi-agent PR review pipeline. Typical triggers include a batch of HIGH/CRITICAL findings that need independent confirmation against the actual codebase, suspected false positives to demote or drop, and findings already fixed by the current diff. Use PROACTIVELY as the final gate in multi-agent PR review pipelines. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: yellow

@@ -1,6 +1,6 @@
 ---
 name: security-reviewer
-description: Use this agent when reviewing code for security vulnerabilities and remediation, especially code handling user input, authentication, API endpoints, or sensitive data. Typical triggers include changes that touch auth or access control, endpoints accepting external input that need injection and SSRF checks, code handling secrets or credentials that may be hardcoded, cryptographic or dependency changes, and any review for OWASP Top 10 exposure. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing code for security vulnerabilities and remediation, especially code handling user input, authentication, API endpoints, or sensitive data. Typical triggers include changes that touch auth or access control, endpoints accepting external input that need injection and SSRF checks, code handling secrets or credentials that may be hardcoded, cryptographic or dependency changes, and any review for OWASP Top 10 exposure. Use PROACTIVELY after writing code that handles user input, authentication, API endpoints, or sensitive data. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Write, Edit, Bash, Grep, Glob]
 model: sonnet
 color: red

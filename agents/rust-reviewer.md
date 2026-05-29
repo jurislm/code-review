@@ -1,6 +1,6 @@
 ---
 name: rust-reviewer
-description: Use this agent when reviewing Rust code for ownership, lifetimes, error handling, unsafe usage, and idiomatic patterns. Typical triggers include changes to .rs files in a PR or local diff, ownership and lifetime concerns such as unnecessary cloning or over-annotated lifetimes, unchecked `unwrap`/`expect` and missing error context, and `unsafe` blocks lacking documented safety invariants. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing Rust code for ownership, lifetimes, error handling, unsafe usage, and idiomatic patterns. Typical triggers include changes to .rs files in a PR or local diff, ownership and lifetime concerns such as unnecessary cloning or over-annotated lifetimes, unchecked `unwrap`/`expect` and missing error context, and `unsafe` blocks lacking documented safety invariants. MUST BE USED for Rust projects. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue

@@ -1,6 +1,6 @@
 ---
 name: java-reviewer
-description: Use this agent when reviewing Java code in Spring Boot or Quarkus projects for layered architecture, persistence correctness, security, or concurrency. Typical triggers include changes to .java files in a PR or local diff, Spring Boot or Quarkus components that need framework-appropriate review, JPA or Panache persistence code that needs a query and transaction check, and security-sensitive or concurrent code paths. See "When to invoke" in the agent body for worked scenarios.
+description: Use this agent when reviewing Java code in Spring Boot or Quarkus projects for layered architecture, persistence correctness, security, or concurrency. Typical triggers include changes to .java files in a PR or local diff, Spring Boot or Quarkus components that need framework-appropriate review, JPA or Panache persistence code that needs a query and transaction check, and security-sensitive or concurrent code paths. MUST BE USED for all Java code changes. See "When to invoke" in the agent body for worked scenarios.
 tools: [Read, Grep, Glob, Bash]
 model: sonnet
 color: blue
