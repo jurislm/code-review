@@ -86,7 +86,7 @@ name: <kebab-case>           # 必填
 description: <triggering 格式，見下>  # 必填
 tools: [Read, Grep, Glob]   # 建議；按需加 Bash, Write, Edit
 model: sonnet               # 建議；預設 sonnet；特殊：healthcare-reviewer 用 opus
-color: blue                 # 必填；官方 validator 認可：blue/cyan/green/yellow/magenta/red（避免 orange/purple/cyan 以外的色）
+color: blue                 # 必填；官方 validator 僅認可：blue/cyan/green/yellow/magenta/red（orange、purple、gray 等非認可色勿用）
 ---
 ```
 
