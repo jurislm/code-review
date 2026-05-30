@@ -49,21 +49,21 @@ add_agent() { case "$SPECIALIST_AGENTS" in *"$1"*) ;; *) SPECIALIST_AGENTS="${SP
 while IFS= read -r file; do
   [ -z "$file" ] && continue
   case "$file" in
-    *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs|*.vue|*.svelte) add_agent typescript-reviewer ;;
-    *.py)            add_agent python-reviewer ;;
-    *.go)            add_agent go-reviewer ;;
-    *.rs)            add_agent rust-reviewer ;;
-    *.kt|*.kts)      add_agent kotlin-reviewer ;;
-    *.swift)         add_agent swift-reviewer ;;
-    *.java)          add_agent java-reviewer ;;
-    *.cs)            add_agent csharp-reviewer ;;
-    *.cpp|*.cc|*.cxx|*.c|*.h|*.hpp|*.hxx) add_agent cpp-reviewer ;;
-    *.fs|*.fsx)      add_agent fsharp-reviewer ;;
-    *.dart)          add_agent flutter-reviewer ;;
-    *.sql)           add_agent database-reviewer ;;
+    *.ts|*.tsx|*.js|*.jsx|*.mjs|*.cjs|*.vue|*.svelte) add_agent code-review:typescript-reviewer ;;
+    *.py)            add_agent code-review:python-reviewer ;;
+    *.go)            add_agent code-review:go-reviewer ;;
+    *.rs)            add_agent code-review:rust-reviewer ;;
+    *.kt|*.kts)      add_agent code-review:kotlin-reviewer ;;
+    *.swift)         add_agent code-review:swift-reviewer ;;
+    *.java)          add_agent code-review:java-reviewer ;;
+    *.cs)            add_agent code-review:csharp-reviewer ;;
+    *.cpp|*.cc|*.cxx|*.c|*.h|*.hpp|*.hxx) add_agent code-review:cpp-reviewer ;;
+    *.fs|*.fsx)      add_agent code-review:fsharp-reviewer ;;
+    *.dart)          add_agent code-review:flutter-reviewer ;;
+    *.sql)           add_agent code-review:database-reviewer ;;
   esac
   # Migration files (framework-agnostic naming) → database-reviewer
-  case "$file" in *migrations/*|*migrate/*) add_agent database-reviewer ;; esac
+  case "$file" in *migrations/*|*migrate/*) add_agent code-review:database-reviewer ;; esac
 done <<< "$CHANGED_FILES"
 ```
 
@@ -73,17 +73,17 @@ After the extension pass, inspect file content to add framework specialists. Onl
 
 | Framework | Signal (in changed files) | Add agent |
 |---|---|---|
-| **Django** | `from django`, `models.Model`, `manage.py`, `settings.py`, `urls.py` | `django-reviewer` |
-| **FastAPI** | `from fastapi`, `APIRouter`, `@app.get`/`@router.` | `fastapi-reviewer` |
-| **Flutter** | `pubspec.yaml` present + any `.dart` file, or `package:flutter` import | `flutter-reviewer` |
-| **Database / Supabase** | `.sql`, migration dirs, `CREATE TABLE`, `supabase` client usage | `database-reviewer` |
+| **Django** | `from django`, `models.Model`, `manage.py`, `settings.py`, `urls.py` | `code-review:django-reviewer` |
+| **FastAPI** | `from fastapi`, `APIRouter`, `@app.get`/`@router.` | `code-review:fastapi-reviewer` |
+| **Flutter** | `pubspec.yaml` present + any `.dart` file, or `package:flutter` import | `code-review:flutter-reviewer` |
+| **Database / Supabase** | `.sql`, migration dirs, `CREATE TABLE`, `supabase` client usage | `code-review:database-reviewer` |
 
 Two domains are **content-only** (no reliable extension) — add when context makes them relevant, otherwise skip:
-- **`network-config-reviewer`** — router/switch configs (Cisco IOS `interface`/`access-list`, JunOS), `.cfg`/`.conf` device configs
-- **`healthcare-reviewer`** (Opus) — PHI/HIPAA, EMR/EHR, clinical decision support code
-- **`mle-reviewer`** — ML training/serving, feature pipelines, `torch`/`sklearn`/model-serving code
+- **`code-review:network-config-reviewer`** — router/switch configs (Cisco IOS `interface`/`access-list`, JunOS), `.cfg`/`.conf` device configs
+- **`code-review:healthcare-reviewer`** (Opus) — PHI/HIPAA, EMR/EHR, clinical decision support code
+- **`code-review:mle-reviewer`** — ML training/serving, feature pipelines, `torch`/`sklearn`/model-serving code
 
-> Framework agents **supplement**, not replace, the language agent (e.g. a Django change runs both `python-reviewer` and `django-reviewer`).
+> Framework agents **supplement**, not replace, the language agent (e.g. a Django change runs both `code-review:python-reviewer` and `code-review:django-reviewer`).
 
 `$SPECIALIST_AGENTS` (deduplicated) is now the set of language/framework agents to add to the review.
 
@@ -111,19 +111,19 @@ Set `CHANGED_FILES` from the output above.
 
 ### Phase 1.5 — CLASSIFY & DISPATCH
 
-Run the same file classification as GitHub PR mode Phase 1.5 (populate `$LOGIC_FILES` / `$SECURITY_FILES`), then run **Language / Framework Auto-Dispatch** (above) to compute `$SPECIALIST_AGENTS`. Announce what was detected, e.g. `Detected: python-reviewer, django-reviewer`. The Fast Path (docs/config only → secret scan only) applies here too.
+Run the same file classification as GitHub PR mode Phase 1.5 (populate `$LOGIC_FILES` / `$SECURITY_FILES`), then run **Language / Framework Auto-Dispatch** (above) to compute `$SPECIALIST_AGENTS`. Announce what was detected, e.g. `Detected: code-review:python-reviewer, code-review:django-reviewer`. The Fast Path (docs/config only → secret scan only) applies here too.
 
 ### Phase 2 — CONTEXT & CODE GRAPH
 
-Run GitHub PR mode Phases 2 and 2.5 against the working tree: load project rules and `.claude/review-paths.yaml`, trace callers, run static analysis (capture as context), and run `code-graph-analyzer` (cache key `local-<sha8>` from `git rev-parse --short=8 HEAD`). Store the result as `IMPACT_MAP`.
+Run GitHub PR mode Phases 2 and 2.5 against the working tree: load project rules and `.claude/review-paths.yaml`, trace callers, run static analysis (capture as context), and run `code-review:code-graph-analyzer` (cache key `local-<sha8>` from `git rev-parse --short=8 HEAD`). Store the result as `IMPACT_MAP`.
 
 ### Phase 3 — REVIEW (parallel agents)
 
-Run the **full parallel agent pool** exactly as GitHub PR mode Phase 3: the 8 general agents (`code-reviewer` anchor + `security-reviewer` + the six collaborators) **plus** every agent in `$SPECIALIST_AGENTS`, each reading changed files in full from the working tree. `--focus` filtering and the always-on specialists apply identically.
+Run the **full parallel agent pool** exactly as GitHub PR mode Phase 3: the 8 general agents (`code-review:code-reviewer` anchor + `code-review:security-reviewer` + the six collaborators) **plus** every agent in `$SPECIALIST_AGENTS`, each reading changed files in full from the working tree. `--focus` filtering and the always-on specialists apply identically.
 
 ### Phase 3.5 — VERIFICATION PASS
 
-Run `verification-reviewer` over all HIGH/CRITICAL findings, identical to GitHub PR mode Phase 3.5.
+Run `code-review:verification-reviewer` over all HIGH/CRITICAL findings, identical to GitHub PR mode Phase 3.5.
 
 ### Phase 4 — AGGREGATE & REPORT
 
@@ -267,7 +267,7 @@ Build review context:
 
 ### Phase 2.5 — CODE GRAPH
 
-Run `code-graph-analyzer` **sequentially** (wait for the result before Phase 3). Provides cross-file dependency context unavailable from the diff alone.
+Run `code-review:code-graph-analyzer` **sequentially** (wait for the result before Phase 3). Provides cross-file dependency context unavailable from the diff alone.
 
 Pass to the agent:
 - `$LOGIC_FILES` and `$SECURITY_FILES` from Phase 1.5 (excludes DOCS/CONFIG/TEST)
@@ -282,7 +282,7 @@ The agent checks `.claude/code-graph/<cache_key>-impact-map.md` first — return
 [END IMPACT MAP]
 ```
 
-If `code-graph-analyzer` errors or times out, proceed without the impact map — do not block the review.
+If `code-review:code-graph-analyzer` errors or times out, proceed without the impact map — do not block the review.
 
 ### Phase 3 — REVIEW (parallel agents)
 
@@ -295,21 +295,21 @@ gh pr diff <NUMBER> --name-only | while IFS= read -r file; do
 done
 ```
 
-**Agent pool** — `code-reviewer` is always the anchor. The full pool is:
+**Agent pool** — `code-review:code-reviewer` is always the anchor. The full pool is:
 
 **General agents (8):**
-- `code-reviewer` — overall quality, security, maintainability (anchor)
-- `security-reviewer` — OWASP Top 10; injection, SSRF, hardcoded secrets, unsafe crypto
-- `comment-analyzer` — inline comment accuracy, completeness, rot risk
-- `pr-test-analyzer` — test coverage, behavioral coverage, real-bug prevention
-- `silent-failure-hunter` — swallowed errors, ignored promises, missing propagation
-- `type-design-analyzer` — type encapsulation, invariant expression, enforcement
-- `code-simplifier` — over-complex implementations, duplicate abstractions
-- `pr-walkthrough-writer` — structured walkthrough + Mermaid diagram (skip when `--focus` is set); **store output as `WALKTHROUGH_OUTPUT`**
+- `code-review:code-reviewer` — overall quality, security, maintainability (anchor)
+- `code-review:security-reviewer` — OWASP Top 10; injection, SSRF, hardcoded secrets, unsafe crypto
+- `code-review:comment-analyzer` — inline comment accuracy, completeness, rot risk
+- `code-review:pr-test-analyzer` — test coverage, behavioral coverage, real-bug prevention
+- `code-review:silent-failure-hunter` — swallowed errors, ignored promises, missing propagation
+- `code-review:type-design-analyzer` — type encapsulation, invariant expression, enforcement
+- `code-review:code-simplifier` — over-complex implementations, duplicate abstractions
+- `code-review:pr-walkthrough-writer` — structured walkthrough + Mermaid diagram (skip when `--focus` is set); **store output as `WALKTHROUGH_OUTPUT`**
 
 **Specialist agents (auto-dispatched):** every agent in `$SPECIALIST_AGENTS` (from Phase 1.5) runs alongside the general pool, scoped to its language/framework files.
 
-**`--focus` filtering** — `code-reviewer` always runs. The auto-dispatched `$SPECIALIST_AGENTS` always run (language coverage is independent of focus). When `--focus` is specified, validate it first:
+**`--focus` filtering** — `code-review:code-reviewer` always runs. The auto-dispatched `$SPECIALIST_AGENTS` always run (language coverage is independent of focus). When `--focus` is specified, validate it first:
 
 ```
 Valid --focus values: comments | tests | errors | types | code | simplify
@@ -321,18 +321,18 @@ A valid `--focus` runs only the mapped general subset (plus the always-on specia
 | `--focus` | General agents to run |
 |---|---|
 | _(none)_ | All 8 general agents |
-| `comments` | `code-reviewer` + `comment-analyzer` |
-| `tests` | `code-reviewer` + `pr-test-analyzer` |
-| `errors` | `code-reviewer` + `silent-failure-hunter` |
-| `types` | `code-reviewer` + `type-design-analyzer` |
-| `code` | `code-reviewer` + `security-reviewer` |
-| `simplify` | `code-reviewer` + `code-simplifier` |
+| `comments` | `code-review:code-reviewer` + `code-review:comment-analyzer` |
+| `tests` | `code-review:code-reviewer` + `code-review:pr-test-analyzer` |
+| `errors` | `code-review:code-reviewer` + `code-review:silent-failure-hunter` |
+| `types` | `code-review:code-reviewer` + `code-review:type-design-analyzer` |
+| `code` | `code-review:code-reviewer` + `code-review:security-reviewer` |
+| `simplify` | `code-review:code-reviewer` + `code-review:code-simplifier` |
 
 Apply the 7-category **Review Checklist** (below) across all agents.
 
 ### Phase 3.5 — VERIFICATION PASS
 
-Launch `verification-reviewer` with all HIGH and CRITICAL findings from Phase 3. Wait for its output. Carry forward:
+Launch `code-review:verification-reviewer` with all HIGH and CRITICAL findings from Phase 3. Wait for its output. Carry forward:
 - All **CONFIRMED** findings at their original or verified severity.
 - **UNCERTAIN** findings demoted to MEDIUM (survive as MEDIUM — do not discard).
 - All **CRITICAL** findings regardless of verdict — may be demoted to HIGH, never removed.
@@ -467,7 +467,7 @@ printf '%s\n\n%s' "$STRIPPED" "$SUMMARY_BLOCK" | gh pr edit <NUMBER> --body-file
 
 **Step 7a — Walkthrough comment first** — the first thing developers see, posted before any findings.
 
-Use `WALKTHROUGH_OUTPUT` from `pr-walkthrough-writer` if it ran; otherwise generate inline. Include a 1–5 **Review Effort** score:
+Use `WALKTHROUGH_OUTPUT` from `code-review:pr-walkthrough-writer` if it ran; otherwise generate inline. Include a 1–5 **Review Effort** score:
 - **1** Docs/config/formatting only · **2** Small fix, 1–3 files · **3** Medium feature/refactor, 4–10 files · **4** Complex refactor or >10 files · **5** Architecture/schema/auth/cross-cutting
 
 Add a Mermaid sequence diagram only when ≤10 files changed AND at least one non-test logic file is present and a clear multi-layer flow exists; otherwise omit.
@@ -640,7 +640,7 @@ Identical to GitHub mode. Read each changed file in full at the PR head commit:
 curl -s -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   "https://api.bitbucket.org/2.0/repositories/{workspace}/{slug}/src/{head_commit}/{filepath}"
 ```
-Run the full parallel agent pool (general + `$SPECIALIST_AGENTS`), `verification-reviewer` (Phase 3.5), and the same aggregate/validate/decide logic.
+Run the full parallel agent pool (general + `$SPECIALIST_AGENTS`), `code-review:verification-reviewer` (Phase 3.5), and the same aggregate/validate/decide logic.
 
 ### Phase 6 — REPORT ARTIFACT
 
