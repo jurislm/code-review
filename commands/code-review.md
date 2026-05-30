@@ -62,7 +62,7 @@ while IFS= read -r file; do
     *.dart)          add_agent code-review:flutter-reviewer ;;
     *.sql)           add_agent code-review:database-reviewer ;;
   esac
-  # Migration files (framework-agnostic naming) → database-reviewer
+  # Migration files (framework-agnostic naming) → code-review:database-reviewer
   case "$file" in *migrations/*|*migrate/*) add_agent code-review:database-reviewer ;; esac
 done <<< "$CHANGED_FILES"
 ```
