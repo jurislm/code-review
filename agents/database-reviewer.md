@@ -1,9 +1,9 @@
 ---
 name: database-reviewer
 description: Use this agent when reviewing PostgreSQL database code for query optimization, schema design, security, or performance, incorporating Supabase best practices. Typical triggers include SQL queries that need an index and table-scan check, schema designs that need a data-type and constraint review, migrations that need a safety review, and database performance troubleshooting. Use PROACTIVELY when writing SQL, creating migrations, designing schemas, or troubleshooting database performance. See "When to invoke" in the agent body for worked scenarios.
-tools: [Read, Write, Edit, Bash, Grep, Glob]
+tools: [Read, Grep, Glob, Bash]
 model: sonnet
-color: yellow
+color: blue
 ---
 
 ## When to invoke
