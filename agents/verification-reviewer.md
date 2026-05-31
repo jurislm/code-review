@@ -123,7 +123,7 @@ Evidence: <what you found that contradicts the finding>
 | UNCERTAIN | Failure scenario not concretely triggerable | If original severity is CRITICAL → demote to HIGH (never remove); if HIGH → downgrade to MEDIUM **only if** the code itself has an objectively risky structural gap — meaning: (a) the value *can* be null/undefined and there is *no* null check, (b) external input reaches a sink without validation, or (c) an error path is structurally unhandled (not caught or propagated) — the "risky" judgment must be based on what the code does, not on the absence of a proof of triggering; if the mechanism itself is speculative (you cannot point to the specific missing guard in the code), remove the finding entirely |
 | FALSE POSITIVE | Existing guard already handles it | If original severity is CRITICAL → demote to HIGH (never remove); otherwise remove entirely |
 
-**CRITICAL findings are never removed** — they may be demoted to HIGH but must always appear in output. This applies regardless of which agent raised the finding.
+**CRITICAL findings are never removed** (exception: findings with a FIXED IN THIS PR verdict are always removed — the PR itself is the fix) — all other CRITICAL findings may be demoted to HIGH but must always appear in output. This applies regardless of which agent raised the finding.
 
 ## What You Must NOT Do
 

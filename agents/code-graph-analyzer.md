@@ -203,7 +203,7 @@ mkdir -p .claude/code-graph
 ```
 
 - **Path**: `.claude/code-graph/${CACHE_KEY}-impact-map.md`
-- **Content**: the full markdown document generated in Step 4 (the complete `# Code Impact Map` document, not a placeholder)
+- **Content**: the full Markdown document generated in Step 4 (the complete `# Code Impact Map` document, not a placeholder)
 
 Return the full assembled document as your response. This output will be injected into each parallel reviewer's context.
 
