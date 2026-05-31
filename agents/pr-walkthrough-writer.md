@@ -64,14 +64,14 @@ Rules:
 Only attempt a sequence diagram when **all three** conditions are true:
 1. At least one LOGIC-type file (`.ts`, `.js`, `.py`, `.go`, `.rs`, etc.) was changed
 2. Total changed files ≤ 10
-3. A clear multi-layer flow is visible in the diff (entry point → processing → data layer)
+3. A clear multi-layer flow is detectable in the changed files
 
-Trace the main data flow:
-- Entry point: HTTP handler, route, controller, command handler
-- Intermediate layers: service, middleware, validator
-- Data layer: database call, external API, cache, store
+**Detecting multi-layer flow (condition 3):** Check whether the changed file set contains files matching **at least two of these three tiers** from different files:
+- **Entry tier**: filename matches `handler`, `controller`, `route`, `endpoint`, `resolver`, `action`, `view` (as a path component or filename stem)
+- **Service tier**: filename matches `service`, `usecase`, `use_case`, `domain`, `manager`, `interactor`, `business`
+- **Data tier**: filename matches `repository`, `repo`, `dao`, `store`, `model`, `migration`, `schema`, `database`, `db`
 
-If no clear multi-layer flow is discernible (e.g., an isolated utility function, config change, or test-only change), skip the diagram entirely — **do not force one**.
+If the changed files span at least two of these tiers (e.g., a route file + a service file), condition 3 is met. If all changes are within a single tier or none match (e.g., an isolated utility, config, or test-only change), skip the diagram entirely — **do not force one**.
 
 ## Step 4 — Generate Mermaid Sequence Diagram
 
@@ -92,7 +92,7 @@ sequenceDiagram
     H-->>C: 200 OK
 ```
 
-Constraints: max 6–8 participants, 8–12 message steps. If the flow involves more, show only the most critical path.
+Constraints: max 6–8 participants, 8–12 message steps. If the flow naturally requires more participants, collapse related ones (e.g., "Auth & Role Service" as one participant) to stay within the limit. If collapsing still results in >8 participants, skip the diagram and note "Flow too complex for diagram — see diff" after the file table.
 
 ## Step 5 — Return Structured Markdown
 
@@ -107,10 +107,17 @@ Return the complete walkthrough as:
 |------|--------|---------|
 | `<file>` | Added/Modified/Deleted | <one-sentence summary> |
 
+<!-- Include the mermaid block ONLY when Step 3 conditions are met and diagram was generated -->
 ```mermaid
 sequenceDiagram
 ...
 ```
 ````
 
-If the sequence diagram was skipped (Step 3 conditions not met), end after the file table — no placeholder text.
+If the sequence diagram was skipped (Step 3 conditions not met), end after the file table — no placeholder text, no empty mermaid block. If the diagram was skipped due to >8 participants even after collapsing, add one line: `_Flow too complex for diagram — see diff._`
+
+**File table tone guide by type:**
+- **LOGIC**: verb + object describing the business change (e.g., "Replace session auth with JWT validation")
+- **TEST**: "Add/Update tests for X" describing what behavior is now covered
+- **CONFIG**: operational impact (e.g., "Expose port 8080 for local dev", "Enable rate limiting for prod")
+- **DOCS**: update scope (e.g., "Update API examples to reflect v2 endpoints")

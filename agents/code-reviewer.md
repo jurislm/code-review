@@ -70,9 +70,7 @@ Before writing a finding, answer all four questions. If any answer is "no" or
    reviewing.
 3. **Have I read the surrounding context?** Check callers, imports, and tests.
    Many apparent issues are already handled one frame up or guarded by a type.
-4. **Is the severity defensible?** A missing JSDoc is never HIGH. A single
-   `any` in a test fixture is never CRITICAL. Severity inflation erodes trust
-   faster than missed findings.
+4. **Is the severity defensible?** For HIGH/CRITICAL, verify all three proof elements are present: (a) exact file and line, (b) concrete failure scenario with named trigger, (c) explanation of why existing guards do not catch it. If any element is missing, demote to MEDIUM or drop. A missing JSDoc is never HIGH. A single `any` in a test fixture is never CRITICAL. Severity inflation erodes trust faster than missed findings.
 
 ### HIGH / CRITICAL Require Proof
 
@@ -280,7 +278,7 @@ const usersWithPosts = await db.query(`
 
 ### Style Nitpicks (NITPICK)
 
-Minor optional improvements that have no correctness or maintainability impact. Only include when `--profile=assertive` (default). Skip entirely in `--profile=chill`.
+Minor optional improvements that have no correctness or maintainability impact. The `--profile` value is provided as part of your invocation context: **include NITPICK findings only when `--profile=assertive` (the default)**; skip all NITPICK findings entirely when `--profile=chill` even if you discover them.
 
 - Formatting preferences the linter doesn't enforce (e.g., blank lines between methods)
 - Trivial rename suggestions (e.g., `res` → `response` in a 3-line function)
@@ -303,7 +301,10 @@ Guard gap: No environment variable substitution; no .gitignore entry.
 + const apiKey = process.env.API_KEY;
 ```
 
-**AI Implementation Prompt**: In `src/api/client.ts` at line 42, the API key is hardcoded in source. Move it to an environment variable: replace the string literal with `process.env.API_KEY`, add `API_KEY=` to `.env.example`, and verify `.env` is in `.gitignore`.
+**AI Implementation Prompt**:
+1. In `src/api/client.ts` line 42, replace `"sk-abc123"` with `process.env.API_KEY`.
+2. Add `API_KEY=` (with a placeholder comment) to `.env.example`.
+3. Verify `.env` is listed in `.gitignore`.
 ```
 
 For MEDIUM and LOW findings, a plain description and fix suggestion is sufficient (no diff block required).
@@ -327,6 +328,8 @@ End every review with:
 
 Verdict: WARNING — 2 HIGH issues should be resolved before merge.
 ```
+
+**The Verdict line is mandatory** — every review must end with exactly one of: `Verdict: APPROVE`, `Verdict: WARNING`, or `Verdict: BLOCK`. Do not omit it even when findings are zero.
 
 ## Approval Criteria
 

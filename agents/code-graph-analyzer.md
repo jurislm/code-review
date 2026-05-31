@@ -48,6 +48,8 @@ mkdir -p .claude/code-graph
 
 **⚠️ CACHE HIT — if the bash block above printed "CACHE_HIT", return the cached content now and stop. Do NOT proceed to Steps 2–5.**
 
+> **Cache key note**: The key uses 8 hex chars of the HEAD SHA (~1 in 4 billion collision chance per session). This is sufficient for single-session caching — collisions would result in a stale map being returned, causing slightly inaccurate dependency info, not incorrect review conclusions.
+
 ## Step 2 — L2: Import Dependency Tracing (one BFS hop)
 
 For each changed LOGIC or SECURITY file, trace two directions:
@@ -91,8 +93,8 @@ grep -rn "import .*\.${BASENAME}\b" \
 grep -rn "use .*::${BASENAME}\b" \
   --include="*.rs" $EXCLUDE . 2>/dev/null | head -10 || true
 
-# Swift: import BASENAME (module-level only)
-grep -rn "^import ${BASENAME}$" \
+# Swift: import BASENAME (module-level — matches line-start import followed by name and optional whitespace/EOL)
+grep -rn "^import ${BASENAME}[[:space:]]*$" \
   --include="*.swift" $EXCLUDE . 2>/dev/null | head -10 || true
 
 # C#: using BASENAME / using ...BASENAME (anchored at end of identifier)
@@ -126,7 +128,8 @@ commits = data.split('---COMMIT---')
 co_changed = Counter()
 for commit in commits:
     files = [f.strip() for f in commit.strip().split('\n')
-             if f.strip() and f.strip() != target and not f.strip().startswith('---') and f.strip()]
+             if f.strip() and f.strip() != target and not f.strip().startswith('---') and f.strip()
+             and not any(pat in f.strip() for pat in ['.test.', '.spec.', '_test.', '_spec.', '/test/', '/tests/', '/spec/'])]
     for f in files:
         co_changed[f] += 1
 for f, count in co_changed.most_common(10):
@@ -193,16 +196,14 @@ Files that changed together in the last 50 commits:
 
 ## Step 5 — Persist and Return
 
-Use the **Write tool** to persist the impact map assembled in Step 4:
-
-- **Path**: `.claude/code-graph/${CACHE_KEY}-impact-map.md`
-- **Content**: the full markdown document generated in Step 4 (the complete `# Code Impact Map` document, not a placeholder)
-
-Then run:
+Use the **Write tool** to persist the impact map assembled in Step 4. Before writing, ensure the directory exists:
 
 ```bash
-echo "Impact map written to $CACHE_FILE"
+mkdir -p .claude/code-graph
 ```
+
+- **Path**: `.claude/code-graph/${CACHE_KEY}-impact-map.md`
+- **Content**: the full Markdown document generated in Step 4 (the complete `# Code Impact Map` document, not a placeholder)
 
 Return the full assembled document as your response. This output will be injected into each parallel reviewer's context.
 
