@@ -203,7 +203,7 @@ done <<< "$CHANGED_FILES"
   grep -rn "api[_-]key\s*=\s*['\"][^'\"]\{8,\}['\"]" $CHANGED_FILES 2>/dev/null | head -10 || true
   ```
 - Zero secrets/credentials → post `gh pr review --approve` with note "Docs/config changes — no logic review needed" (Phase 7), then Phase 8
-- A secret/credential detected → exit Fast Path, run the full Slow Path from Phase 2 (linter + typecheck results from the secret scan step are re-used — do not re-run them)
+- A secret/credential detected → exit Fast Path, run the full Slow Path from Phase 2 (no prior linter/typecheck results exist — run them normally in Phase 2)
 
 **Slow Path** (any LOGIC or SECURITY file): proceed to Phase 2 normally.
 
@@ -660,22 +660,22 @@ curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" -H "Content-Type: application
   -d "{\"content\": {\"raw\": \"$REVIEW_BODY\"}}" \
   "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
 
-# APPROVE
-curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
-  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/approve"
-
-# REQUEST CHANGES — any HIGH or validation failure (no CRITICAL)
-curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
-  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/request-changes"
-
-# BLOCK — any CRITICAL: prepend ⛔ header to REVIEW_BODY, then post as request-changes
-# (Bitbucket has no native BLOCK state — use REQUEST CHANGES with a prominent header)
+# Decision — exactly one branch executes (mutually exclusive)
 if [ "$CRITICAL_COUNT" -gt 0 ]; then
+  # BLOCK — prepend ⛔ header; Bitbucket has no native BLOCK, use request-changes
   REVIEW_BODY="⛔ BLOCK — This PR must not be merged until all CRITICAL issues are resolved.
 
 $REVIEW_BODY"
   curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
     "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/request-changes"
+elif [ "$HIGH_COUNT" -gt 0 ] || [ "${VALIDATION_FAILED:-0}" -eq 1 ]; then
+  # REQUEST CHANGES — any HIGH finding or validation failure
+  curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+    "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/request-changes"
+else
+  # APPROVE — zero CRITICAL/HIGH, validation passes
+  curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+    "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/approve"
 fi
 ```
 
