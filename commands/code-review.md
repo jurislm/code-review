@@ -508,7 +508,7 @@ gh api "repos/{owner}/{repo}/pulls/<NUMBER>/comments" \
 
 **Step 7c — Main review body** (MEDIUM table + overflow HIGH/CRITICAL + decision):
 
-> **Profile gate**: `--profile=chill` → skip the MEDIUM section and any overflow HIGH/CRITICAL table entries; include only the severity counts + decision (APPROVE/REQUEST CHANGES/BLOCK still shown).
+> **Profile gate**: `--profile=chill` → skip the MEDIUM section only; overflow HIGH/CRITICAL entries in the `## ⚠️ Issues Requiring Attention` table are always shown regardless of profile. Severity counts + decision (APPROVE/REQUEST CHANGES/BLOCK) are always shown.
 
 ```markdown
 ## 📊 Review Summary
@@ -655,25 +655,26 @@ curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" -H "Content-Type: application
 
 **Step 7c — Main review comment + decision:**
 ```bash
-# Post summary comment (all cases)
+# Prepend ⛔ BLOCK header BEFORE posting the comment (so it appears in the comment body)
+if [ "$CRITICAL_COUNT" -gt 0 ]; then
+  REVIEW_BODY="⛔ BLOCK — This PR must not be merged until all CRITICAL issues are resolved.
+
+$REVIEW_BODY"
+fi
+
+# Post summary comment (all cases) — REVIEW_BODY is now final
 curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" -H "Content-Type: application/json" \
   -d "{\"content\": {\"raw\": \"$REVIEW_BODY\"}}" \
   "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
 
-# Decision — exactly one branch executes (mutually exclusive)
+# Decision API — exactly one branch executes (mutually exclusive)
 if [ "$CRITICAL_COUNT" -gt 0 ]; then
-  # BLOCK — prepend ⛔ header; Bitbucket has no native BLOCK, use request-changes
-  REVIEW_BODY="⛔ BLOCK — This PR must not be merged until all CRITICAL issues are resolved.
-
-$REVIEW_BODY"
   curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
     "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/request-changes"
 elif [ "$HIGH_COUNT" -gt 0 ] || [ "${VALIDATION_FAILED:-0}" -eq 1 ]; then
-  # REQUEST CHANGES — any HIGH finding or validation failure
   curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
     "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/request-changes"
 else
-  # APPROVE — zero CRITICAL/HIGH, validation passes
   curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
     "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/approve"
 fi
