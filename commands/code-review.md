@@ -86,7 +86,6 @@ Two domains have **content-based dispatch** (no reliable extension — grep diff
 | **Network config** | `interface `, `access-list`, `ip route`, `router `, `hostname ` in `.cfg`/`.conf` files, or any Cisco IOS/JunOS syntax | `code-review:network-config-reviewer` |
 | **Healthcare / HIPAA** | `PHI`, `HIPAA`, `HL7`, `FHIR`, `EMR`, `EHR`, `patient`, `clinical`, `diagnosis`, `ICD`, `SNOMED`, `drug`, `dose` in source files | `code-review:healthcare-reviewer` (Opus) |
 | **ML / MLOps** | `torch`, `tensorflow`, `sklearn`, `model.fit`, `model.predict`, `feature_store`, `mlflow`, `wandb`, `ray` in source files | `code-review:mle-reviewer` |
-
 > Framework agents **supplement**, not replace, the language agent (e.g. a Django change runs both `code-review:python-reviewer` and `code-review:django-reviewer`).
 
 `$SPECIALIST_AGENTS` (deduplicated) is now the set of language/framework agents to add to the review.
