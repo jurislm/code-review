@@ -28,6 +28,7 @@ Both modes run the **same full pipeline** — code graph → parallel stack (8 g
 - `--profile=chill` → output only CRITICAL and HIGH. Skip MEDIUM, LOW, NITPICK. Best for fast-moving feature branches.
 - `--profile=assertive` (default) → output all severity levels including NITPICK. Best for PRs targeting main/release.
 
+
 **Platform detection** (PR mode):
 - URL contains `bitbucket.org` → **Bitbucket PR Review**
 - URL contains `github.com`, or number only with a GitHub `origin` → **GitHub PR Review**
@@ -78,10 +79,13 @@ After the extension pass, inspect file content to add framework specialists. Onl
 | **Flutter** | `pubspec.yaml` present + any `.dart` file, or `package:flutter` import | `code-review:flutter-reviewer` |
 | **Database / Supabase** | `.sql`, migration dirs, `CREATE TABLE`, `supabase` client usage | `code-review:database-reviewer` |
 
-Two domains are **content-only** (no reliable extension) — add when context makes them relevant, otherwise skip:
-- **`code-review:network-config-reviewer`** — router/switch configs (Cisco IOS `interface`/`access-list`, JunOS), `.cfg`/`.conf` device configs
-- **`code-review:healthcare-reviewer`** (Opus) — PHI/HIPAA, EMR/EHR, clinical decision support code
-- **`code-review:mle-reviewer`** — ML training/serving, feature pipelines, `torch`/`sklearn`/model-serving code
+Two domains have **content-based dispatch** (no reliable extension — grep diff/file content for the signal):
+
+| Domain | Signal | Add agent |
+|---|---|---|
+| **Network config** | `interface `, `access-list`, `ip route`, `router `, `hostname ` in `.cfg`/`.conf` files, or any Cisco IOS/JunOS syntax | `code-review:network-config-reviewer` |
+| **Healthcare / HIPAA** | `PHI`, `HIPAA`, `HL7`, `FHIR`, `EMR`, `EHR`, `patient`, `clinical`, `diagnosis`, `ICD`, `SNOMED`, `drug`, `dose` in source files | `code-review:healthcare-reviewer` (Opus) |
+| **ML / MLOps** | `torch`, `tensorflow`, `sklearn`, `model.fit`, `model.predict`, `feature_store`, `mlflow`, `wandb`, `ray` in source files | `code-review:mle-reviewer` |
 
 > Framework agents **supplement**, not replace, the language agent (e.g. a Django change runs both `code-review:python-reviewer` and `code-review:django-reviewer`).
 
@@ -107,7 +111,7 @@ Use the incremental form when `--from=<commit>` is specified. In later phases, u
 
 If no changed files, stop: "Nothing to review."
 
-Set `CHANGED_FILES` from the output above.
+Set `CHANGED_FILES` from the output above. On Windows, strip carriage returns: `git diff --name-only HEAD | tr -d '\r'`. `CHANGED_FILES` persists as a variable through all subsequent phases — Phase 1.5 uses it for classification, Phase 2 for caller tracing, and Phase 3 agents use it to know which files to read.
 
 ### Phase 1.5 — CLASSIFY & DISPATCH
 
@@ -119,11 +123,13 @@ Run GitHub PR mode Phases 2 and 2.5 against the working tree: load project rules
 
 ### Phase 3 — REVIEW (parallel agents)
 
-Run the **full parallel agent pool** exactly as GitHub PR mode Phase 3: the 8 general agents (`code-review:code-reviewer` anchor + `code-review:security-reviewer` + the six collaborators) **plus** every agent in `$SPECIALIST_AGENTS`, each reading changed files in full from the working tree. `--focus` filtering and the always-on specialists apply identically.
+Run the **full parallel agent pool** exactly as GitHub PR mode Phase 3: the 8 general agents (`code-review:code-reviewer` anchor + `code-review:security-reviewer` + the six collaborators) **plus** every agent in `$SPECIALIST_AGENTS`. Each agent reads changed files **in full from the working tree** using the `Read` tool (not `gh api`) — the list of files to read is `$CHANGED_FILES` from Phase 1. `--focus` filtering applies identically to GitHub PR mode; `pr-walkthrough-writer` is skipped when `--focus` is set. The always-on `$SPECIALIST_AGENTS` run regardless of `--focus`.
 
 ### Phase 3.5 — VERIFICATION PASS
 
-Run `code-review:verification-reviewer` over all HIGH/CRITICAL findings, identical to GitHub PR mode Phase 3.5.
+**If Phase 3 produced zero HIGH or CRITICAL findings, skip Phase 3.5 entirely and proceed to Phase 4.**
+
+Otherwise, run `code-review:verification-reviewer` over all HIGH and CRITICAL findings, identical to GitHub PR mode Phase 3.5.
 
 ### Phase 4 — AGGREGATE & REPORT
 
@@ -156,23 +162,6 @@ If the PR is not found, stop with an error. Store PR metadata for later phases.
 
 ### Phase 1.5 — CLASSIFY & DISPATCH
 
-**Skip-if-unchanged gate** — if the PR HEAD has not changed since the last review, exit early:
-
-```bash
-LAST_COMMIT_FILE=".claude/reviews/pr-<NUMBER>-last-commit.txt"
-CURRENT_HEAD=$(gh pr view <NUMBER> --json headRefOid --jq '.headRefOid')
-if [ -f "$LAST_COMMIT_FILE" ]; then
-  LAST_COMMIT=$(cat "$LAST_COMMIT_FILE")
-  if [ "$LAST_COMMIT" = "$CURRENT_HEAD" ]; then
-    echo "No new commits since last review. Nothing to do."
-    exit 0
-  fi
-  echo "New commits detected since last review ($LAST_COMMIT → $CURRENT_HEAD). Running full review."
-fi
-# LAST_COMMIT_FILE is written at the end of Phase 8 so the next run can skip if unchanged
-```
-
-> This is a **skip-if-unchanged** gate, not a diff-scoping mechanism. When new commits exist, the full PR diff is always reviewed — no regressions missed from rebases or force-pushes.
 
 **File classification** — route between Fast Path and Slow Path, and build the lists for dispatch:
 
@@ -206,9 +195,16 @@ done <<< "$CHANGED_FILES"
 
 **Fast Path** (only DOCS + CONFIG + OTHER — zero LOGIC/SECURITY files):
 - Skip Phases 2, 2.5, 3, 3.5, 4
-- Run **secret scan only**: the static analysis / secret-scan commands from Phase 2 Step 6 (linters + credential patterns)
+- Run **secret scan only** — the following credential-pattern greps against all changed files:
+  ```bash
+  grep -rn "sk-[a-zA-Z0-9]\{20,\}" $CHANGED_FILES 2>/dev/null | head -20 || true
+  grep -rn "ghp_[a-zA-Z0-9]\{36\}" $CHANGED_FILES 2>/dev/null | head -10 || true
+  grep -rn "AKIA[0-9A-Z]\{16\}" $CHANGED_FILES 2>/dev/null | head -10 || true
+  grep -rn "password\s*=\s*['\"][^'\"]\{8,\}['\"]" $CHANGED_FILES 2>/dev/null | head -10 || true
+  grep -rn "api[_-]key\s*=\s*['\"][^'\"]\{8,\}['\"]" $CHANGED_FILES 2>/dev/null | head -10 || true
+  ```
 - Zero secrets/credentials → post `gh pr review --approve` with note "Docs/config changes — no logic review needed" (Phase 7), then Phase 8
-- A secret/credential detected → exit Fast Path, run the full Slow Path from Phase 2
+- A secret/credential detected → exit Fast Path, run the full Slow Path from Phase 2 (linter + typecheck results from the secret scan step are re-used — do not re-run them)
 
 **Slow Path** (any LOGIC or SECURITY file): proceed to Phase 2 normally.
 
@@ -275,14 +271,15 @@ Pass to the agent:
 
 The agent checks `.claude/code-graph/<cache_key>-impact-map.md` first — returns the cached map if the SHA matches; otherwise computes L2 import dependencies + L3 co-change risk and writes to `.claude/code-graph/`.
 
-**Store the returned markdown as `IMPACT_MAP`.** Prepend it to each parallel agent's prompt in Phase 3:
+**Store the returned markdown as `IMPACT_MAP`.** When launching each parallel agent in Phase 3, prepend the following block to the agent's prompt before any per-agent instructions:
+
 ```text
 [IMPACT MAP — use as additional context for cross-file risk; do not repeat verbatim in findings]
 <IMPACT_MAP content>
 [END IMPACT MAP]
 ```
 
-If `code-review:code-graph-analyzer` errors or times out, proceed without the impact map — do not block the review.
+All agents — both the 8 general agents and every agent in `$SPECIALIST_AGENTS` — receive the full impact map. Each agent is responsible for extracting the subset relevant to its scope. If `code-review:code-graph-analyzer` errors or times out, omit the block entirely and proceed — do not block the review.
 
 ### Phase 3 — REVIEW (parallel agents)
 
@@ -337,13 +334,15 @@ Launch `code-review:verification-reviewer` with all HIGH and CRITICAL findings f
 - **UNCERTAIN** findings demoted to MEDIUM (survive as MEDIUM — do not discard).
 - All **CRITICAL** findings regardless of verdict — may be demoted to HIGH, never removed.
 
-Discard only findings marked INVALID or FALSE POSITIVE (unless originally CRITICAL → demote to HIGH instead). If the PR diff already fixes the issue, remove it with a "FIXED IN THIS PR" verdict (not subject to CRITICAL protection).
+Discard only findings marked INVALID or FALSE POSITIVE (unless originally CRITICAL → demote to HIGH instead). If the PR diff already fixes the issue, mark it "FIXED IN THIS PR" and **always remove it regardless of original severity** — a finding that the PR itself resolves is not a blocker even if it was CRITICAL.
 
 ### Phase 4 — AGGREGATE & VALIDATE
 
-**4a — Deduplicate**: Group findings by file + approximate line. Keep one instance per issue.
+> **Scope**: Phase 4 operates only on findings that survived Phase 3.5. INVALID and FALSE POSITIVE verdicts were already removed by `code-review:verification-reviewer`; UNCERTAIN findings were already demoted to MEDIUM. Phase 4 does not re-adjudicate individual verdicts — it deduplicates, resolves cross-agent conflicts, and validates the build.
 
-**4b — Contradiction filter**: If two agents flag the same code for opposite reasons (or one flags while another approves), require ≥ 2 agents in agreement. **Exception**: findings originally rated CRITICAL by any agent are always included regardless of agreement count — even if verification demoted them to HIGH.
+**4a — Deduplicate**: Group findings by file + approximate line. Keep one instance per issue — prefer the instance from the agent with the most specific evidence (exact line + concrete failure scenario).
+
+**4b — Contradiction filter**: If two agents flag the **same code for opposite reasons** (e.g. one flags a function as too complex, another as appropriately concise), require ≥ 2 agents in agreement to include the finding. This filter targets inter-agent disagreement about the same aspect of the same code — it does not re-open findings already verified by Phase 3.5. **Exception**: findings originally rated CRITICAL are always included regardless of agreement count.
 
 **4c — Confidence filter**: Drop findings framed as "might", "possibly", "consider" unless CRITICAL. Only report ≥ 80% confidence.
 
@@ -442,7 +441,7 @@ body = sys.stdin.read()
 body = re.sub(r'<!-- cr-summary:start -->.*?<!-- cr-summary:end -->', '', body, flags=re.DOTALL)
 body = re.sub(r'<!-- cr-summary:start -->', '', body)
 print(body.strip())
-")
+" 2>/dev/null) || STRIPPED="$CURRENT_BODY"
 
 SUMMARY_BLOCK="<!-- cr-summary:start -->
 
@@ -458,7 +457,7 @@ SUMMARY_BLOCK="<!-- cr-summary:start -->
 **Reviewed**: $(date +%Y-%m-%d) · **Findings**: ${CRITICAL_COUNT} critical · ${HIGH_COUNT} high · ${MEDIUM_COUNT} medium
 <!-- cr-summary:end -->"
 
-printf '%s\n\n%s' "$STRIPPED" "$SUMMARY_BLOCK" | gh pr edit <NUMBER> --body-file -
+printf '%s\n\n%s' "$STRIPPED" "$SUMMARY_BLOCK" | gh pr edit <NUMBER> --body-file - || true
 ```
 
 > Skip for Bitbucket (REST API does not support this CLI workflow).
@@ -485,7 +484,7 @@ WALKTHROUGH_BODY="## 🔍 PR Walkthrough
 gh pr review <NUMBER> --comment --body "$WALKTHROUGH_BODY"
 ```
 
-**Step 7b — Inline comments for CRITICAL/HIGH** (post individually, max 10; excess joins the table in 7c):
+**Step 7b — Inline comments for CRITICAL/HIGH** (post individually, max 10; any CRITICAL/HIGH beyond the 10th are included in the `## ⚠️ Issues Requiring Attention` table in Step 7c alongside MEDIUM findings):
 
 ```text
 **[{SEVERITY}] {issue_title}**
@@ -494,7 +493,7 @@ gh pr review <NUMBER> --comment --body "$WALKTHROUGH_BODY"
 
 **Why existing guards don't catch it:** {guard_gap}
 ```
-If the fix is a single line, append a committable suggestion block:
+If the fix replaces **exactly one line** with **exactly one line**, append a committable suggestion block (do not use suggestion blocks for multi-line removals or additions — use a diff block in the description instead):
 ````markdown
 ```suggestion
 {fixed_line_content}
@@ -508,9 +507,9 @@ gh api "repos/{owner}/{repo}/pulls/<NUMBER>/comments" \
   -f side="RIGHT" -f commit_id="$HEAD_SHA"
 ```
 
-**Step 7c — Main review body** (MEDIUM table + decision):
+**Step 7c — Main review body** (MEDIUM table + overflow HIGH/CRITICAL + decision):
 
-> **Profile gate**: `--profile=chill` → skip the MEDIUM section; include only the severity counts + decision.
+> **Profile gate**: `--profile=chill` → skip the MEDIUM section and any overflow HIGH/CRITICAL table entries; include only the severity counts + decision (APPROVE/REQUEST CHANGES/BLOCK still shown).
 
 ```markdown
 ## 📊 Review Summary
@@ -564,6 +563,7 @@ ${LOW_NITPICK_LIST}
 
 ```
 PR #<NUMBER>: <TITLE>
+Platform: GitHub
 Decision: <APPROVE|REQUEST_CHANGES|BLOCK>
 Specialists: <list of $SPECIALIST_AGENTS or "none">
 
@@ -573,16 +573,6 @@ Validation: <pass>/<total> checks passed
 Artifacts:
   Review: .claude/reviews/pr-<NUMBER>-review.md
   GitHub: <PR URL>
-```
-
-Save the reviewed HEAD commit — **only if Phase 7c succeeded** (the `gh pr review` call returned 0). If Phase 7 failed (network/token/API error), skip writing so the next run retries from scratch:
-
-```bash
-# Set REVIEW_EXIT=$? immediately after the Phase 7c gh pr review call
-if [ "${REVIEW_EXIT:-1}" -eq 0 ]; then
-  mkdir -p .claude/reviews
-  gh pr view <NUMBER> --json headRefOid --jq '.headRefOid' > ".claude/reviews/pr-<NUMBER>-last-commit.txt"
-fi
 ```
 
 ---
@@ -648,10 +638,11 @@ Create `.claude/reviews/pr-<ID>-review.md` using the same format as GitHub mode.
 
 ### Phase 7 — PUBLISH
 
-**Step 7a — Walkthrough comment first:**
+**Step 7a — Walkthrough comment first** — use `WALKTHROUGH_OUTPUT` from `code-review:pr-walkthrough-writer` (same as GitHub mode — the agent ran in Phase 3). If the agent output is unavailable, generate the walkthrough inline using the file table and effort score described in the GitHub Phase 7 Step 7a spec.
+
 ```bash
 curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" -H "Content-Type: application/json" \
-  -d "{\"content\": {\"raw\": \"## PR Walkthrough\n\n<walkthrough_content>\"}}" \
+  -d "{\"content\": {\"raw\": \"$WALKTHROUGH_BODY\"}}" \
   "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
 ```
 
@@ -670,10 +661,23 @@ curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" -H "Content-Type: application
   -d "{\"content\": {\"raw\": \"$REVIEW_BODY\"}}" \
   "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/comments"
 
-# APPROVE (200 + JSON) / REQUEST CHANGES or BLOCK (204 No Content)
+# APPROVE
 curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
   "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/approve"
-# or .../request-changes
+
+# REQUEST CHANGES — any HIGH or validation failure (no CRITICAL)
+curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+  "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/request-changes"
+
+# BLOCK — any CRITICAL: prepend ⛔ header to REVIEW_BODY, then post as request-changes
+# (Bitbucket has no native BLOCK state — use REQUEST CHANGES with a prominent header)
+if [ "$CRITICAL_COUNT" -gt 0 ]; then
+  REVIEW_BODY="⛔ BLOCK — This PR must not be merged until all CRITICAL issues are resolved.
+
+$REVIEW_BODY"
+  curl -s -X POST -u "$BB_USERNAME:$BB_APP_PASSWORD" \
+    "https://api.bitbucket.org/2.0/repositories/$WORKSPACE/$REPO_SLUG/pullrequests/$PR_ID/request-changes"
+fi
 ```
 
 **Step 7d — Low priority** (Bitbucket has no HTML folding — plain format):
