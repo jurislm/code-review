@@ -1,5 +1,16 @@
 # Changelog
 
+## [4.0.0](https://github.com/jurislm/code-review/compare/v3.0.0...v4.0.0) (2026-05-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* /review-pr and all /<lang>-review commands are removed. Use /code-review for everything — language specialists are now dispatched automatically based on the changed files.
+
+### Bug Fixes
+
+* use fully-qualified namespaced agent names throughout code-review command ([#11](https://github.com/jurislm/code-review/issues/11)) ([6c948e7](https://github.com/jurislm/code-review/commit/6c948e763560ae14c6e6e03df44ca62a06ffc3f6))
+
 ## [3.0.0](https://github.com/jurislm/code-review/compare/v2.0.0...v3.0.0) (2026-05-29)
 
 
