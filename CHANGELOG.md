@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.1.0](https://github.com/jurislm/code-review/compare/v4.0.0...v4.1.0) (2026-06-02)
+
+
+### Features
+
+* comprehensive pipeline correctness and clarity overhaul ([#13](https://github.com/jurislm/code-review/issues/13)) ([b91099c](https://github.com/jurislm/code-review/commit/b91099ceeb7e5495a495be184f16f2c9e53934a8))
+
 ## [4.0.0](https://github.com/jurislm/code-review/compare/v3.0.0...v4.0.0) (2026-05-30)
 
 
